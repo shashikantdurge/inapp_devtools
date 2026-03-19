@@ -33,24 +33,6 @@ sealed class JsonTreeData {
   /// For array items: the array index (e.g., `"[0]"`)
   /// For root nodes: `null`
   final String? key;
-
-  /// Builds a tree view node structure from any JSON-compatible data.
-  ///
-  /// Converts the given [json] data into a hierarchical tree structure
-  /// suitable for display in a TreeView widget.
-  ///
-  /// Returns a record containing:
-  /// - The root [TreeViewNode] of the constructed tree
-  /// - The next available line number after building the tree
-  ///
-  /// Example:
-  /// ```dart
-  /// final json = {"name": "Alice", "age": 30};
-  /// final (rootNode, _) = JsonTreeData.buildTreeViewNode(json);
-  /// ```
-  static (TreeViewNode<JsonTreeData>, int) buildTreeViewNode(dynamic json) {
-    return _buildTreeViewNode(json);
-  }
 }
 
 /// Represents a JSON array node in the tree structure.
@@ -132,8 +114,8 @@ class PrimitiveTreeData extends JsonTreeData {
   const PrimitiveTreeData({
     required super.lineNumber,
     required this.primitiveType,
-    required super.key,
     required this.value,
+    super.key,
   });
 
   /// The type of this primitive value.
@@ -171,9 +153,9 @@ class StringPrimitiveTreeData extends PrimitiveTreeData {
   const StringPrimitiveTreeData({
     required super.lineNumber,
     required super.primitiveType,
-    required super.key,
     required super.value,
     required this.formattedValue,
+    super.key,
   });
 
   /// A list of string segments with their character types.
@@ -225,6 +207,28 @@ class JsonTreeException implements Exception {
   String toString() => 'JsonTreeException: $message';
 }
 
+/// Builds a tree view node structure from any JSON-compatible data.
+///
+/// Converts the given [json] data into a hierarchical tree structure
+/// suitable for display in a TreeView widget.
+///
+/// Returns a record containing:
+/// - The root [TreeViewNode] of the constructed tree
+/// - The next available line number after building the tree
+///
+/// Example:
+/// ```dart
+/// final json = {"name": "Alice", "age": 30};
+/// final (rootNode, _) = JsonTreeData.buildTreeViewNode(json);
+/// ```
+(TreeViewNode<JsonTreeData>, int) buildTreeViewNode(
+  dynamic json, {
+  bool expanded = true,
+  int? expandDepth,
+}) {
+  return _buildTreeViewNode(json, expanded: expanded, expandDepth: expandDepth);
+}
+
 /// Builds a tree view node from any JSON-compatible data.
 ///
 /// This is the main entry point for converting JSON data into a tree structure.
@@ -244,25 +248,37 @@ class JsonTreeException implements Exception {
   dynamic data, {
   String? key,
   int lineNumber = 1,
+  bool expanded = true,
+  int currentDepth = 0,
+  int? expandDepth,
 }) {
   return switch (data) {
-    List() => _buildListNode(data, key: key, lineNumber: lineNumber),
-    Map() => _buildMapNode(data, key: key, lineNumber: lineNumber),
+    List() => _buildListNode(
+      data,
+      key: key,
+      lineNumber: lineNumber,
+      expanded: expanded,
+      expandDepth: expandDepth,
+      currentDepth: currentDepth,
+    ),
+    Map() => _buildMapNode(
+      data,
+      key: key,
+      lineNumber: lineNumber,
+      expanded: expanded,
+      expandDepth: expandDepth,
+      currentDepth: currentDepth,
+    ),
     _ => _buildPrimitiveNode(data, key: key, lineNumber: lineNumber),
   };
 }
 
-/// Safely extracts content between matching brackets from a string.
-///
 /// Removes surrounding `[...]` or `{...}` brackets if present.
-/// Returns the original string if brackets are missing or mismatched.
 ///
 /// Examples:
 /// ```dart
 /// _getCollapsedValue("[1, 2, 3]")  // → "1, 2, 3"
 /// _getCollapsedValue("{a: b}")     // → "a: b"
-/// _getCollapsedValue("[]")         // → ""
-/// _getCollapsedValue("invalid")    // → "invalid"
 /// ```
 String _getCollapsedValue(String str) {
   // Handle empty or very short strings
@@ -297,13 +313,20 @@ String _getCollapsedValue(String str) {
 /// Returns a record with the node and next available line number.
 (TreeViewNode<JsonTreeData>, int) _buildListNode(
   List data, {
-  String? key,
+  required int currentDepth,
   required int lineNumber,
+  String? key,
+  bool expanded = true,
+  int? expandDepth,
 }) {
+  expanded = expanded && (expandDepth == null || currentDepth < expandDepth);
   final (children, nextLineNumber) = _buildChildrenNodes(
     data.asMap().entries,
     startLineNumber: lineNumber + 1,
     keyBuilder: (index, _) => "[$index]",
+    expanded: expanded,
+    expandDepth: expandDepth,
+    currentDepth: currentDepth,
   );
 
   if (children.isNotEmpty) {
@@ -320,6 +343,7 @@ String _getCollapsedValue(String str) {
         key: key,
       ),
       children: children,
+      expanded: expanded,
     ),
     nextLineNumber + 1,
   );
@@ -341,13 +365,20 @@ String _getCollapsedValue(String str) {
 /// Returns a record with the node and next available line number.
 (TreeViewNode<JsonTreeData>, int) _buildMapNode(
   Map data, {
-  String? key,
+  required int currentDepth,
   required int lineNumber,
+  String? key,
+  bool expanded = true,
+  int? expandDepth,
 }) {
+  expanded = expanded && (expandDepth == null || currentDepth < expandDepth);
   final (children, nextLineNumber) = _buildChildrenNodes(
     data.entries.toList().asMap().entries,
     startLineNumber: lineNumber + 1,
     keyBuilder: (_, entry) => jsonEncode(entry.key),
+    expanded: expanded,
+    expandDepth: expandDepth,
+    currentDepth: currentDepth,
   );
 
   if (children.isNotEmpty) {
@@ -364,6 +395,7 @@ String _getCollapsedValue(String str) {
         key: key,
       ),
       children: children,
+      expanded: expanded,
     ),
     nextLineNumber + 1,
   );
@@ -390,6 +422,9 @@ String _getCollapsedValue(String str) {
   Iterable<MapEntry<int, T>> entries, {
   required int startLineNumber,
   required String Function(int index, T entry) keyBuilder,
+  required int currentDepth,
+  bool expanded = true,
+  int? expandDepth,
 }) {
   final children = <TreeViewNode<JsonTreeData>>[];
   int currentLineNumber = startLineNumber;
@@ -404,6 +439,9 @@ String _getCollapsedValue(String str) {
       value,
       key: key,
       lineNumber: currentLineNumber,
+      expanded: expanded,
+      expandDepth: expandDepth,
+      currentDepth: currentDepth + 1,
     );
     children.add(node);
     currentLineNumber = nextLine;

@@ -17,6 +17,9 @@ class JsonTreeTheme extends ThemeExtension<JsonTreeTheme> {
     required this.lineNumberTextColor,
     required this.lineNumberBackgroundColor,
     required this.dropdownIconColor,
+    required this.specialCharColor,
+    required this.collapsedValueTextColor,
+    required this.collapsedValueBackgroundColor,
   });
 
   final Color keyColor;
@@ -33,6 +36,9 @@ class JsonTreeTheme extends ThemeExtension<JsonTreeTheme> {
   final Color lineNumberTextColor;
   final Color lineNumberBackgroundColor;
   final Color dropdownIconColor;
+  final Color specialCharColor;
+  final Color collapsedValueTextColor;
+  final Color collapsedValueBackgroundColor;
 
   /// Light theme colors (Postman-inspired)
   factory JsonTreeTheme.light() => const JsonTreeTheme(
@@ -50,6 +56,9 @@ class JsonTreeTheme extends ThemeExtension<JsonTreeTheme> {
     lineNumberTextColor: Color(0xFF5F6368), // Gray for line numbers
     lineNumberBackgroundColor: Color(0xFFF5F5F5), // Light gray background
     dropdownIconColor: Color(0xFF5F6368), // Gray for dropdown icon
+    specialCharColor: Color(0xFF1E5AAE), // Blue for escape sequences
+    collapsedValueTextColor: Color(0xFF5F6368), // Gray for collapsed preview
+    collapsedValueBackgroundColor: Color(0x335F6368), // Gray at 20% for collapsed background
   );
 
   /// Dark theme colors (Postman-inspired)
@@ -70,6 +79,9 @@ class JsonTreeTheme extends ThemeExtension<JsonTreeTheme> {
     lineNumberTextColor: Color(0xFF9AA0A6), // Light gray for line numbers
     lineNumberBackgroundColor: Color(0xFF2D3748), // Dark gray background
     dropdownIconColor: Color(0xFF8AB4F8), // Light blue for dropdown icon
+    specialCharColor: Color(0xFF6BA4F7), // Light blue for escape sequences
+    collapsedValueTextColor: Color(0xFF9AA0A6), // Light gray for collapsed preview
+    collapsedValueBackgroundColor: Color(0x33BDC1C6), // Light gray at 20% for collapsed background
   );
 
   @override
@@ -88,6 +100,9 @@ class JsonTreeTheme extends ThemeExtension<JsonTreeTheme> {
     Color? lineNumberTextColor,
     Color? lineNumberBackgroundColor,
     Color? dropdownIconColor,
+    Color? specialCharColor,
+    Color? collapsedValueTextColor,
+    Color? collapsedValueBackgroundColor,
   }) {
     return JsonTreeTheme(
       keyColor: keyColor ?? this.keyColor,
@@ -106,6 +121,11 @@ class JsonTreeTheme extends ThemeExtension<JsonTreeTheme> {
       lineNumberBackgroundColor:
           lineNumberBackgroundColor ?? this.lineNumberBackgroundColor,
       dropdownIconColor: dropdownIconColor ?? this.dropdownIconColor,
+      specialCharColor: specialCharColor ?? this.specialCharColor,
+      collapsedValueTextColor:
+          collapsedValueTextColor ?? this.collapsedValueTextColor,
+      collapsedValueBackgroundColor:
+          collapsedValueBackgroundColor ?? this.collapsedValueBackgroundColor,
     );
   }
 
@@ -141,6 +161,17 @@ class JsonTreeTheme extends ThemeExtension<JsonTreeTheme> {
       dropdownIconColor: Color.lerp(
         dropdownIconColor,
         other.dropdownIconColor,
+        t,
+      )!,
+      specialCharColor: Color.lerp(specialCharColor, other.specialCharColor, t)!,
+      collapsedValueTextColor: Color.lerp(
+        collapsedValueTextColor,
+        other.collapsedValueTextColor,
+        t,
+      )!,
+      collapsedValueBackgroundColor: Color.lerp(
+        collapsedValueBackgroundColor,
+        other.collapsedValueBackgroundColor,
         t,
       )!,
     );

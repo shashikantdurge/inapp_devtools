@@ -1,20 +1,36 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
-
 import 'json_tree_data.dart';
 import 'json_tree_theme.dart';
 
+/// Displays JSON data as an expandable tree with syntax highlighting.
+///
+/// Use [JsonTreeTheme] to customize colors
 class JsonTreeWidget extends StatefulWidget {
   const JsonTreeWidget({
     required this.json,
+    this.expanded = true,
     this.textStyle = const TextStyle(
       fontSize: 14.0,
       fontWeight: FontWeight.normal,
     ),
+    this.expandDepth,
     super.key,
   });
-  final TextStyle textStyle;
+
+  /// The JSON data to display. Must be JSON-compatible (Map, List, String, num, bool, null).
   final dynamic json;
+
+  /// Whether the tree is expanded. Defaults to true.
+  final bool expanded;
+
+  /// Text style applied to the tree content.
+  final TextStyle textStyle;
+
+  /// The depth to expand the tree. Defaults to null.
+  final int? expandDepth;
 
   @override
   State<JsonTreeWidget> createState() => _JsonTreeWidgetState();
@@ -24,15 +40,11 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   static const double _indentationWidth = 32.0;
   static const double _padding = 2.0;
   static const double _expandIconSize = 30.0;
-
-  bool isExpanded = true;
   late Size textSize;
-  double _lineNumberWidth = 56.0;
-  late int linesCount;
-  late JsonTreeTheme jsonTheme;
+  late double _lineNumberWidth;
+  late JsonTreeTheme _jsonTheme;
   late List<TreeViewNode<JsonTreeData>> _treeNodes;
   double get indentationWidth => _indentationWidth;
-  double get padding => _padding;
   TreeViewController treeViewController = TreeViewController();
 
   @override
@@ -43,32 +55,42 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   }
 
   void _constructTree() {
-    final (node, linesCount) = JsonTreeData.buildTreeViewNode(widget.json);
+    final (node, maxLineNumber) = buildTreeViewNode(
+      widget.json,
+      expanded: widget.expanded,
+      expandDepth: widget.expandDepth,
+    );
     _treeNodes = [node];
-    this.linesCount = linesCount;
     _lineNumberWidth =
-        _calculateTextSize('$linesCount').width + _expandIconSize;
-    Future(() => treeViewController.expandAll());
+        _calculateTextSize('$maxLineNumber').width + _expandIconSize;
   }
 
   @override
   void didUpdateWidget(covariant JsonTreeWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.json.toString() != widget.json.toString()) {
-      _constructTree();
-    }
     if (widget.textStyle != oldWidget.textStyle) {
       textSize = _calculateTextSize();
+    }
+    if (jsonEncode(widget.json) != jsonEncode(oldWidget.json) ||
+        widget.expandDepth != oldWidget.expandDepth ||
+        (widget.expanded != oldWidget.expanded && widget.expandDepth != null)) {
+      _constructTree();
+    } else if (widget.expanded != oldWidget.expanded) {
+      if (widget.expanded) {
+        treeViewController.expandAll();
+      } else {
+        treeViewController.collapseAll();
+      }
     }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    jsonTheme = _getJsonTheme(context);
+    _jsonTheme = _getJsonTheme(context);
   }
 
-  Size _calculateTextSize([String text = 'abcdefghijklmnopqrstuvwxyz{}[]']) {
+  Size _calculateTextSize([String text = ' ']) {
     final textPainter = TextPainter(
       text: TextSpan(
         text: text,
@@ -99,9 +121,6 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // if (kDebugMode) {
-    //   _constructTree();
-    // }
     return DefaultTextStyle(
       style: widget.textStyle,
       child: TreeView(
@@ -116,7 +135,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   }
 
   Span _buildTreeRow(TreeViewNode<JsonTreeData> node) {
-    final rowHeight = textSize.height + padding * 2;
+    final rowHeight = textSize.height + _padding * 2;
     return TreeRow(
       extent: FixedSpanExtent(rowHeight),
       padding: const SpanPadding(),
@@ -125,15 +144,15 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
 
   Color _getValueColor(PrimitiveType primitiveType) {
     return switch (primitiveType) {
-      PrimitiveType.string => jsonTheme.stringColor,
-      PrimitiveType.number => jsonTheme.numberColor,
-      PrimitiveType.boolean => jsonTheme.booleanColor,
-      PrimitiveType.nullValue => jsonTheme.nullColor,
+      PrimitiveType.string => _jsonTheme.stringColor,
+      PrimitiveType.number => _jsonTheme.numberColor,
+      PrimitiveType.boolean => _jsonTheme.booleanColor,
+      PrimitiveType.nullValue => _jsonTheme.nullColor,
     };
   }
 
   Widget _buildKeyText(String key, bool isListItem) {
-    final color = isListItem ? jsonTheme.listIndexColor : jsonTheme.keyColor;
+    final color = isListItem ? _jsonTheme.listIndexColor : _jsonTheme.keyColor;
     return Text(key, style: TextStyle(color: color));
   }
 
@@ -175,9 +194,9 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
         treeViewController.toggleNode(node);
       },
       child: Material(
-        color: jsonTheme.lineNumberBackgroundColor,
+        color: _jsonTheme.lineNumberBackgroundColor,
         child: Padding(
-          padding: EdgeInsets.all(padding),
+          padding: EdgeInsets.all(_padding),
           child: SizedBox(
             width: _lineNumberWidth,
             child: Align(
@@ -187,7 +206,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
                 children: [
                   Text(
                     "${node.content.lineNumber}",
-                    style: TextStyle(color: jsonTheme.lineNumberTextColor),
+                    style: TextStyle(color: _jsonTheme.lineNumberTextColor),
                   ),
                   SizedBox.square(
                     dimension: _expandIconSize,
@@ -221,7 +240,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
       child: Icon(
         const IconData(0x25BA),
         size: 14,
-        color: jsonTheme.dropdownIconColor,
+        color: _jsonTheme.dropdownIconColor,
       ),
     );
   }
@@ -240,7 +259,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
     final isListItem = node.parent?.content is ListTreeData;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(0, padding, padding, padding),
+      padding: EdgeInsets.fromLTRB(0, _padding, _padding, _padding),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -267,7 +286,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   List<Widget> _buildStringValue(StringPrimitiveTreeData node) {
     return [
       if (node.key != null)
-        Text(" : ", style: TextStyle(color: jsonTheme.colonColor)),
+        Text(" : ", style: TextStyle(color: _jsonTheme.colonColor)),
       Text.rich(
         TextSpan(
           children: node.formattedValue.map((e) {
@@ -275,7 +294,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
               StringCharType.plain => TextSpan(text: e.$1),
               StringCharType.special => TextSpan(
                 text: e.$1,
-                style: TextStyle(color: Colors.blue),
+                style: TextStyle(color: _jsonTheme.specialCharColor),
               ),
             };
           }).toList(),
@@ -288,7 +307,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   List<Widget> _buildPrimitiveValue(PrimitiveTreeData node) {
     return [
       if (node.key != null)
-        Text(" : ", style: TextStyle(color: jsonTheme.colonColor)),
+        Text(" : ", style: TextStyle(color: _jsonTheme.colonColor)),
       Text(
         node.value,
         style: TextStyle(color: _getValueColor(node.primitiveType)),
@@ -311,8 +330,8 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
           child: Text(
             collapsedValue,
             style: TextStyle(
-              color: Colors.grey,
-              backgroundColor: Colors.grey.withValues(alpha: 0.2),
+              color: _jsonTheme.collapsedValueTextColor,
+              backgroundColor: _jsonTheme.collapsedValueBackgroundColor,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -328,11 +347,11 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   ) {
     return [
       if (node.key != null)
-        Text(" : ", style: TextStyle(color: jsonTheme.colonColor)),
-      Text("{", style: TextStyle(color: jsonTheme.bracketColor)),
+        Text(" : ", style: TextStyle(color: _jsonTheme.colonColor)),
+      Text("{", style: TextStyle(color: _jsonTheme.bracketColor)),
       if (!treeNode.isExpanded) ...[
         _buildCollapsedValue(node.collapsedValue, treeNode),
-        Text("}", style: TextStyle(color: jsonTheme.bracketColor)),
+        Text("}", style: TextStyle(color: _jsonTheme.bracketColor)),
       ],
     ];
   }
@@ -343,16 +362,16 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   ) {
     return [
       if (node.key != null)
-        Text(" : ", style: TextStyle(color: jsonTheme.colonColor)),
-      Text("[", style: TextStyle(color: jsonTheme.bracketColor)),
+        Text(" : ", style: TextStyle(color: _jsonTheme.colonColor)),
+      Text("[", style: TextStyle(color: _jsonTheme.bracketColor)),
       if (!treeNode.isExpanded) ...[
         _buildCollapsedValue(node.collapsedValue, treeNode),
-        Text("]", style: TextStyle(color: jsonTheme.bracketColor)),
+        Text("]", style: TextStyle(color: _jsonTheme.bracketColor)),
       ],
     ];
   }
 
   List<Widget> _buildClosingBracket(BracketTreeData node) {
-    return [Text(node.value, style: TextStyle(color: jsonTheme.bracketColor))];
+    return [Text(node.value, style: TextStyle(color: _jsonTheme.bracketColor))];
   }
 }
