@@ -1,0 +1,10 @@
+name: inapp_devtools_workspace
+publish_to: 'none'
+environment:
+  sdk: '>=3.10.3 <4.0.0'
+workspace:
+  - packages/inapp_devtools
+
+dev_dependencies:
+  lints: any
+  melos: ^7.4.0
