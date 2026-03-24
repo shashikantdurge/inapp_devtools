@@ -12,7 +12,7 @@ const _postmanSuccess = Color(0xFF4CAF50);
 const _postmanBorder = Color(0xFF404040);
 
 void main() {
-  runApp(InAppDevtoolsWidget(child: const MyApp()));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -83,6 +83,13 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const MyHomePage(title: 'API Client'),
+      builder: (context, child) {
+        return InAppDevTools(
+          color: Colors.purple,
+          tools: [const MyCustomTool()],
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }
@@ -228,6 +235,12 @@ class _MyHomePageState extends State<MyHomePage> {
     await fileSink.close();
   }
 
+  Future<void> showSnackbar() async {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Snackbar')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -276,6 +289,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       label: 'Download video',
                       icon: Icons.download,
                       onPressed: _isLoading ? null : downloadVideo,
+                    ),
+                    _ActionButton(
+                      label: 'Snackbar',
+                      icon: Icons.message,
+                      onPressed: _isLoading ? null : showSnackbar,
                     ),
                   ],
                 ),
@@ -570,5 +588,26 @@ class _TimelineRow extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class MyCustomTool extends StatefulWidget with InAppDevToolsItem {
+  const MyCustomTool({super.key});
+
+  @override
+  State<MyCustomTool> createState() => _MyCustomToolState();
+
+  @override
+  String get label => 'Custom Tool';
+
+  @override
+  Widget? get labelWidget =>
+      Row(children: [Icon(Icons.code), Text('Custom Tool')]);
+}
+
+class _MyCustomToolState extends State<MyCustomTool> {
+  @override
+  Widget build(BuildContext context) {
+    return InAppDevToolsScaffold(body: Container(color: Colors.blue));
   }
 }
