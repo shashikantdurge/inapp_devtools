@@ -5,11 +5,17 @@
 /// descendants to read [InAppDevToolsController] and drive [InAppDevToolsPanelWindowMode].
 library;
 
+import 'dart:io';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:inapp_devtools/src/inapp_devtool/inapp_devtool_network.dart';
+import 'package:inapp_devtools/src/network_tool/http_profiler.dart'
+    show HttpProfiler;
+import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart'
+    show IADNetworkHttpOverrides;
 
 import 'inapp_devtools_theme.dart';
 
@@ -50,7 +56,7 @@ enum InAppDevToolsPanelWindowMode {
 class InAppDevTools extends StatefulWidget {
   InAppDevTools({
     super.key,
-    required this.tools,
+    this.tools = const [InAppDevtoolNetwork()],
     this.initialSelectedToolIndex = 0,
     this.theme,
     this.color,
@@ -91,6 +97,12 @@ class InAppDevTools extends StatefulWidget {
         .panelMode;
   }
 
+  static void ensureInitialized() {
+    // Initialize the network tools
+    HttpProfiler.ensureInitialized();
+    HttpOverrides.global = IADNetworkHttpOverrides();
+  }
+
   @override
   State<InAppDevTools> createState() => _InAppDevToolsState();
 }
@@ -101,6 +113,7 @@ class _InAppDevToolsState extends State<InAppDevTools> {
   @override
   void initState() {
     super.initState();
+    InAppDevTools.ensureInitialized();
     _controller
       ..setTools(widget.tools)
       ..setSelectedToolIndex(widget.initialSelectedToolIndex);
@@ -446,7 +459,3 @@ class InAppDevToolsController extends ChangeNotifier {
     }
   }
 }
-
-// --- Tool picker (horizontal list) ------------------------------------------
-
-// --- Registered panel entry (implements [Widget]) ----------------------------

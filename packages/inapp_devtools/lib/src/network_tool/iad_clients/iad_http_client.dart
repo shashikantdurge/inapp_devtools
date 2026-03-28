@@ -1,14 +1,128 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:inapp_devtools/src/core/network_tool/request.dart'
-    show Request, HttpProfileData, Response;
-import 'package:uuid/uuid.dart';
+import '../http_profile_data.dart';
 
-class NetworkToolHttpClient implements HttpClient {
+class IADNetworkHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    final innerHttpClient = super.createHttpClient(context);
+    return IADNetworkHttpClient(innerHttpClient);
+  }
+}
+
+///Provides the extension methods for the HttpProfileData class to handle the HTTP requests and responses from the IO package.
+extension on HttpProfileData {
+  void appendRequestData(Uint8List data) {
+    request.requestBody.addAll(data);
+    log('appendRequestData');
+    sendDataToProfiler();
+  }
+
+  Map<String, List<String>> _formatHeaders(HttpHeaders headers) {
+    final newHeaders = <String, List<String>>{};
+    headers.forEach((name, values) {
+      newHeaders[name] = values;
+    });
+    return newHeaders;
+  }
+
+  Map? _formatConnectionInfo(HttpConnectionInfo? connectionInfo) =>
+      connectionInfo == null
+      ? null
+      : {
+          'localPort': connectionInfo.localPort,
+          'remoteAddress': connectionInfo.remoteAddress.address,
+          'remotePort': connectionInfo.remotePort,
+        };
+
+  void finishRequest({required HttpClientRequest request}) {
+    this.request.requestInProgress = false;
+    this.request.requestEndedAt = DateTime.now();
+    this.request.headers = _formatHeaders(request.headers);
+    this.request.connectionInfo = _formatConnectionInfo(request.connectionInfo);
+    this.request.contentLength = request.contentLength;
+    this.request.cookies = [
+      for (final cookie in request.cookies) cookie.toString(),
+    ];
+    this.request.followRedirects = request.followRedirects;
+    this.request.maxRedirects = request.maxRedirects;
+    this.request.persistentConnection = request.persistentConnection;
+    log('finishRequest');
+    sendDataToProfiler();
+  }
+
+  void finishRequestWithError(String error) {
+    request.requestInProgress = false;
+    request.requestEndedAt = DateTime.now();
+    request.error = error;
+    log('finishRequestWithError');
+    sendDataToProfiler();
+  }
+
+  /// Marks the response as "finished."
+  void finishResponse() {
+    // Guard against the response being completed more than once or being
+    // completed before the response actually finished starting.
+    if (response.responseInProgress != true) return;
+    response.responseInProgress = false;
+    response.responseEndedAt = DateTime.now();
+    log('finishResponse');
+    sendDataToProfiler();
+  }
+
+  /// Marks the response as "finished" with an error.
+  void finishResponseWithError(String error) {
+    // Return if `finishResponseWithError` has already been called. Can happen
+    // if the response stream is listened to with `cancelOnError: false`.
+    if (response.responseInProgress != true) return;
+    response.responseInProgress = false;
+    response.responseEndedAt = DateTime.now();
+    response.error = error;
+    log('finishResponseWithError');
+    sendDataToProfiler();
+  }
+
+  void appendResponseData(List<int> data) {
+    response.responseBody.addAll(data);
+    log('appendResponseData');
+    sendDataToProfiler();
+  }
+
+  void startResponse({required HttpClientResponse response}) {
+    this.response.headers = _formatHeaders(response.headers);
+    this.response.connectionInfo = _formatConnectionInfo(
+      response.connectionInfo,
+    );
+    this.response.contentLength = response.contentLength;
+    this.response.cookies = [
+      for (final cookie in response.cookies) cookie.toString(),
+    ];
+    this.response.isRedirect = response.isRedirect;
+    this.response.reasonPhrase = response.reasonPhrase;
+    this.response.statusCode = response.statusCode;
+    this.response.redirects = [
+      for (final redirect in response.redirects)
+        {
+          'location': redirect.location.toString(),
+          'method': redirect.method,
+          'statusCode': redirect.statusCode,
+        },
+    ];
+    this.response.persistentConnection = response.persistentConnection;
+    this.response.responseStartedAt = DateTime.now();
+    this.response.responseInProgress = true;
+    log('startResponse');
+    sendDataToProfiler();
+  }
+}
+
+class IADNetworkHttpClient implements HttpClient {
   final HttpClient _inner;
-  NetworkToolHttpClient(this._inner);
+  IADNetworkHttpClient(this._inner);
 
   @override
   Duration get idleTimeout => _inner.idleTimeout;
@@ -43,15 +157,14 @@ class NetworkToolHttpClient implements HttpClient {
   @override
   Future<HttpClientRequest> openUrl(String method, Uri url) async {
     final HttpProfileData profileData = HttpProfileData(
-      id: Uuid().v4(),
-      request: Request(method: method, uri: url),
+      method: method,
+      uri: url,
     );
-    final request = await _inner.openUrl(method, url);
-    profileData.connectionTime = DateTime.now();
-    request.done.then((response) {
-      profileData.response = Response(statusCode: response.statusCode);
+    final request = await _inner.openUrl(method, url).catchError((error) {
+      profileData.finishRequestWithError(error.toString());
+      throw error;
     });
-    return NetworkToolHttpClientRequest(request, profileData);
+    return IADNetworkHttpClientRequest(request, profileData);
   }
 
   @override
@@ -182,56 +295,39 @@ class NetworkToolHttpClient implements HttpClient {
   void close({bool force = false}) => _inner.close(force: force);
 }
 
-class NetworkToolHttpClientRequest implements HttpClientRequest {
+///A wrapper class for the HttpClientRequest class to handle the HTTP requests and responses from the IO package.
+///
+///Sends the request data to [HttpProfileData] for profiling.
+class IADNetworkHttpClientRequest implements HttpClientRequest {
   final HttpClientRequest _inner;
   final HttpProfileData _profileData;
-  final Completer<NetworkToolHttpClientResponse> _responseCompleter;
-
-  NetworkToolHttpClientRequest(this._inner, this._profileData)
-    : _responseCompleter = Completer<NetworkToolHttpClientResponse>();
-
-  @override
-  bool get bufferOutput => _inner.bufferOutput;
-
-  @override
-  set bufferOutput(bool value) => _inner.bufferOutput = value;
-
-  @override
-  int get contentLength => _inner.contentLength;
-
-  @override
-  set contentLength(int value) => _inner.contentLength = value;
+  final Completer<IADNetworkHttpClientResponse> _responseCompleter =
+      Completer<IADNetworkHttpClientResponse>();
+  IADNetworkHttpClientRequest(this._inner, this._profileData) {
+    done.then((value) {
+      _profileData.finishRequest(request: _inner);
+      _profileData.startResponse(response: value);
+    });
+  }
 
   @override
   Encoding get encoding => _inner.encoding;
 
   @override
-  set encoding(Encoding value) => _inner.encoding = value;
+  set encoding(Encoding value) {
+    _inner.encoding = value;
+  }
 
   @override
-  bool get followRedirects => _inner.followRedirects;
+  void abort([Object? exception, StackTrace? stackTrace]) {
+    _inner.abort(exception, stackTrace);
+  }
 
   @override
-  set followRedirects(bool value) => _inner.followRedirects = value;
-
-  @override
-  int get maxRedirects => _inner.maxRedirects;
-
-  @override
-  set maxRedirects(int value) => _inner.maxRedirects = value;
-
-  @override
-  bool get persistentConnection => _inner.persistentConnection;
-
-  @override
-  set persistentConnection(bool value) => _inner.persistentConnection = value;
-
-  @override
-  void abort([Object? exception, StackTrace? stackTrace]) =>
-      _inner.abort(exception, stackTrace);
-
-  @override
-  void add(List<int> data) => _inner.add(data);
+  void add(List<int> data) {
+    _profileData.appendRequestData(Uint8List.fromList(data));
+    _inner.add(data);
+  }
 
   @override
   void addError(Object error, [StackTrace? stackTrace]) {
@@ -239,16 +335,28 @@ class NetworkToolHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  Future<dynamic> addStream(Stream<List<int>> stream) =>
-      _inner.addStream(stream);
+  Future<dynamic> addStream(Stream<List<int>> stream) {
+    return _inner.addStream(
+      stream.map((event) {
+        _profileData.appendRequestData(Uint8List.fromList(event));
+        return event;
+      }),
+    );
+  }
 
   @override
-  Future<HttpClientResponse> close() async {
-    final response = await _inner.close();
-    _responseCompleter.complete(
-      NetworkToolHttpClientResponse(response, _profileData),
-    );
-    return _responseCompleter.future;
+  Future<IADNetworkHttpClientResponse> close() {
+    return _inner
+        .close()
+        .then((value) {
+          final response = IADNetworkHttpClientResponse(value, _profileData);
+          _responseCompleter.complete(response);
+          return response;
+        })
+        .catchError((error) {
+          _responseCompleter.completeError(error);
+          throw error;
+        });
   }
 
   @override
@@ -258,13 +366,12 @@ class NetworkToolHttpClientRequest implements HttpClientRequest {
   List<Cookie> get cookies => _inner.cookies;
 
   @override
-  Future<HttpClientResponse> get done => Future.wait([
-    _inner.done,
-    _responseCompleter.future,
-  ], eagerError: true).then((list) => list[0]);
+  Future<IADNetworkHttpClientResponse> get done => _responseCompleter.future;
 
   @override
-  Future<dynamic> flush() => _inner.flush();
+  Future<dynamic> flush() {
+    return _inner.flush();
+  }
 
   @override
   HttpHeaders get headers => _inner.headers;
@@ -277,29 +384,85 @@ class NetworkToolHttpClientRequest implements HttpClientRequest {
 
   @override
   void write(Object? object) {
+    String string = '$object';
+    if (string.isNotEmpty) {
+      _profileData.appendRequestData(utf8.encode(string));
+    }
     _inner.write(object);
   }
 
   @override
-  void writeAll(Iterable<dynamic> objects, [String separator = ""]) {
-    _inner.writeAll(objects, separator);
-  }
-
-  @override
-  void writeCharCode(int charCode) {
-    _inner.writeCharCode(charCode);
+  void writeAll(Iterable objects, [String separator = ""]) {
+    Iterator iterator = objects.iterator;
+    if (!iterator.moveNext()) return;
+    if (separator.isEmpty) {
+      do {
+        write(iterator.current);
+      } while (iterator.moveNext());
+    } else {
+      write(iterator.current);
+      while (iterator.moveNext()) {
+        write(separator);
+        write(iterator.current);
+      }
+    }
   }
 
   @override
   void writeln([Object? object = ""]) {
-    _inner.writeln(object);
+    write('$object\n');
+  }
+
+  @override
+  void writeCharCode(int charCode) {
+    write(String.fromCharCode(charCode));
+  }
+
+  @override
+  bool get bufferOutput => _inner.bufferOutput;
+
+  @override
+  set bufferOutput(bool value) {
+    _inner.bufferOutput = value;
+  }
+
+  @override
+  int get contentLength => _inner.contentLength;
+
+  @override
+  set contentLength(int value) {
+    _inner.contentLength = value;
+  }
+
+  @override
+  bool get followRedirects => _inner.followRedirects;
+
+  @override
+  set followRedirects(bool value) {
+    _inner.followRedirects = value;
+  }
+
+  @override
+  int get maxRedirects => _inner.maxRedirects;
+
+  @override
+  set maxRedirects(int value) {
+    _inner.maxRedirects = value;
+  }
+
+  @override
+  bool get persistentConnection => _inner.persistentConnection;
+
+  @override
+  set persistentConnection(bool value) {
+    _inner.persistentConnection = value;
   }
 }
 
-class NetworkToolHttpClientResponse implements HttpClientResponse {
+class IADNetworkHttpClientResponse implements HttpClientResponse {
   final HttpClientResponse _inner;
   final HttpProfileData _profileData;
-  NetworkToolHttpClientResponse(this._inner, this._profileData);
+  IADNetworkHttpClientResponse(this._inner, this._profileData);
 
   @override
   int get statusCode => _inner.statusCode;
@@ -344,7 +507,10 @@ class NetworkToolHttpClientResponse implements HttpClientResponse {
   List<Cookie> get cookies => _inner.cookies;
 
   @override
-  Future<Socket> detachSocket() => _inner.detachSocket();
+  Future<Socket> detachSocket() {
+    _profileData.finishResponseWithError("Socket detached");
+    return _inner.detachSocket();
+  }
 
   @override
   Future<E> drain<E>([E? futureValue]) => _inner.drain(futureValue);
@@ -418,13 +584,19 @@ class NetworkToolHttpClientResponse implements HttpClientResponse {
     bool? cancelOnError,
   }) {
     final stream = _inner.map((event) {
-      _profileData.response?.appendData(event);
+      _profileData.appendResponseData(event);
       return event;
     });
     return stream.listen(
       onData,
-      onError: onError,
-      onDone: onDone,
+      onError: (e, st) {
+        _profileData.finishResponseWithError(e.toString());
+        onError?.call(e, st);
+      },
+      onDone: () {
+        _profileData.finishResponse();
+        onDone?.call();
+      },
       cancelOnError: cancelOnError,
     );
   }

@@ -40,8 +40,15 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   static const double _indentationWidth = 32.0;
   static const double _padding = 2.0;
   static const double _expandIconSize = 30.0;
-  late Size textSize;
+  late Size _textSize;
   late double _lineNumberWidth;
+  late double rowHeight;
+
+  set textSize(Size value) {
+    _textSize = value;
+    rowHeight = _textSize.height + _padding * 2;
+  }
+
   late JsonTreeTheme _jsonTheme;
   late List<TreeViewNode<JsonTreeData>> _treeNodes;
   double get indentationWidth => _indentationWidth;
@@ -55,14 +62,14 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   }
 
   void _constructTree() {
-    final (node, maxLineNumber) = buildTreeViewNode(
+    final (node, nextLineNumber) = buildTreeViewNode(
       widget.json,
       expanded: widget.expanded,
       expandDepth: widget.expandDepth,
     );
     _treeNodes = [node];
     _lineNumberWidth =
-        _calculateTextSize('$maxLineNumber').width + _expandIconSize;
+        _calculateTextSize('$nextLineNumber').width + _expandIconSize;
   }
 
   @override
@@ -124,7 +131,6 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
     return DefaultTextStyle(
       style: widget.textStyle,
       child: TreeView(
-        cacheExtent: 56,
         controller: treeViewController,
         treeRowBuilder: _buildTreeRow,
         treeNodeBuilder: _buildTreeNode,
@@ -135,7 +141,6 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   }
 
   Span _buildTreeRow(TreeViewNode<JsonTreeData> node) {
-    final rowHeight = textSize.height + _padding * 2;
     return TreeRow(
       extent: FixedSpanExtent(rowHeight),
       padding: const SpanPadding(),
@@ -172,7 +177,12 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
       children: [
         _buildLineNumberColumn(node, animationDuration, animationCurve),
         const SizedBox(width: 4),
-        ..._buildIndentationDividers(depth),
+        // Indentation dividers
+        for (int i = 0; i < depth; i++) ...[
+          const VerticalDivider(width: 1, thickness: 0.5),
+          Padding(padding: EdgeInsets.only(left: indentationWidth)),
+        ],
+        //  ..._buildIndentationDividers(depth),
         _buildNodeContent(node),
       ],
     );
@@ -243,16 +253,6 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
         color: _jsonTheme.dropdownIconColor,
       ),
     );
-  }
-
-  List<Widget> _buildIndentationDividers(int depth) {
-    return List.generate(
-      depth,
-      (_) => [
-        const VerticalDivider(width: 1, thickness: 0.5),
-        Padding(padding: EdgeInsets.only(left: indentationWidth)),
-      ],
-    ).expand((widgets) => widgets).toList();
   }
 
   Widget _buildNodeContent(TreeViewNode<JsonTreeData> node) {

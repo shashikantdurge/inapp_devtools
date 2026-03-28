@@ -82,14 +82,13 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const MyHomePage(title: 'API Client'),
-      builder: (context, child) {
-        return InAppDevTools(
-          color: Colors.purple,
-          tools: [const MyCustomTool()],
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
+      home: InAppDevTools(child: const MyHomePage(title: 'API Client')),
+      // builder: (context, child) {
+      //   return InAppDevTools(
+      //     color: Colors.purple,
+      //     child: child ?? const SizedBox.shrink(),
+      //   );
+      // },
     );
   }
 }
@@ -210,6 +209,10 @@ class _MyHomePageState extends State<MyHomePage> {
     await executeRequest('https://api.github.com/users/dart-lang');
   }
 
+  Future<void> fetchGitHubUserError() async {
+    await executeRequest('https://api.github.com/users/dart-lang-error?q=123');
+  }
+
   // --- Use case: request with timing (video URL, no file save) ---
   Future<void> requestWithStopWatch() async {
     await executeRequest(
@@ -279,6 +282,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       label: 'GitHub user',
                       icon: Icons.code,
                       onPressed: _isLoading ? null : fetchGitHubUser,
+                    ),
+                    _ActionButton(
+                      label: 'GitHub user Error',
+                      icon: Icons.code,
+                      onPressed: _isLoading ? null : fetchGitHubUserError,
                     ),
                     _ActionButton(
                       label: 'Video (timing)',
