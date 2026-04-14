@@ -21,6 +21,7 @@
         "flutter",
         "google_fonts",
         "http",
+        "intl",
         "rxdart",
         "two_dimensional_scrollables",
         "uuid"
@@ -88,6 +89,15 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "intl",
+      "version": "0.20.2",
+      "dependencies": [
+        "clock",
+        "meta",
+        "path"
       ]
     },
     {

@@ -315,6 +315,11 @@ ThemeData getDakTheme() {
         side: const BorderSide(color: outline),
       ),
     ),
+    expansionTileTheme: ExpansionTileThemeData(
+      tilePadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      childrenPadding: EdgeInsets.only(bottom: 16),
+      iconColor: Colors.white,
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceContainer,

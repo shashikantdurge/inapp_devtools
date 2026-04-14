@@ -160,6 +160,7 @@ class IADNetworkHttpClient implements HttpClient {
       method: method,
       uri: url,
     );
+    profileData.sendDataToProfiler();
     final request = await _inner.openUrl(method, url).catchError((error) {
       profileData.finishRequestWithError(error.toString());
       throw error;
@@ -513,7 +514,10 @@ class IADNetworkHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  Future<E> drain<E>([E? futureValue]) => _inner.drain(futureValue);
+  Future<E> drain<E>([E? futureValue]) {
+    futureValue ??= futureValue as E;
+    return listen(null, cancelOnError: true).asFuture<E>(futureValue);
+  }
 
   @override
   Future<List<int>> elementAt(int index) => _inner.elementAt(index);
