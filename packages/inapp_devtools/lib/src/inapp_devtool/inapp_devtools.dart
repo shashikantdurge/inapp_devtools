@@ -199,9 +199,23 @@ class _InAppDevToolsState extends State<InAppDevTools> {
             ),
           );
           return Stack(
+            textDirection: TextDirection.ltr,
             children: [
               if (widget.child != null) Positioned.fill(child: widget.child!),
-              devPanel,
+              Theme(
+                data: getDakTheme(),
+                child: Localizations(
+                  locale: Locale('en'),
+                  delegates: [
+                    DefaultMaterialLocalizations.delegate,
+                    DefaultWidgetsLocalizations.delegate,
+                  ],
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: devPanel,
+                  ),
+                ),
+              ),
             ],
           );
         },
