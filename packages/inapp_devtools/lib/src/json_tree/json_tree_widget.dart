@@ -53,7 +53,8 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   late List<TreeViewNode<JsonTreeData>> _treeNodes;
   double get indentationWidth => _indentationWidth;
   TreeViewController treeViewController = TreeViewController();
-
+  final ScrollController horizontalScrollController = ScrollController();
+  final ScrollController verticalScrollController = ScrollController();
   @override
   void initState() {
     super.initState();
@@ -128,14 +129,26 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTextStyle(
-      style: widget.textStyle,
-      child: TreeView(
-        controller: treeViewController,
-        treeRowBuilder: _buildTreeRow,
-        treeNodeBuilder: _buildTreeNode,
-        indentation: TreeViewIndentationType.none,
-        tree: _treeNodes,
+    return Scrollbar(
+      controller: verticalScrollController,
+      child: Scrollbar(
+        controller: horizontalScrollController,
+        child: DefaultTextStyle(
+          style: widget.textStyle,
+          child: TreeView(
+            controller: treeViewController,
+            treeRowBuilder: _buildTreeRow,
+            treeNodeBuilder: _buildTreeNode,
+            indentation: TreeViewIndentationType.none,
+            horizontalDetails: ScrollableDetails.horizontal(
+              controller: horizontalScrollController,
+            ),
+            verticalDetails: ScrollableDetails.vertical(
+              controller: verticalScrollController,
+            ),
+            tree: _treeNodes,
+          ),
+        ),
       ),
     );
   }
