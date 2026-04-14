@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
+import 'api_playground_screen.dart';
+import 'http_test_framework.dart';
 
 // --- Postman-inspired theme ---
 const _postmanBackground = Color(0xFF1E1E1E);
@@ -20,75 +22,77 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'API Client',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: _postmanBackground,
-        colorScheme: const ColorScheme.dark(
-          primary: _postmanOrange,
-          onPrimary: Colors.white,
-          surface: _postmanSurface,
-          onSurface: _postmanText,
-          outline: _postmanBorder,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: _postmanSurface,
-          foregroundColor: _postmanText,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        cardTheme: CardThemeData(
-          color: _postmanSurface,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: _postmanBorder, width: 1),
+    return InAppDevTools(
+      child: MaterialApp(
+        title: 'API Client',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: _postmanBackground,
+          colorScheme: const ColorScheme.dark(
+            primary: _postmanOrange,
+            onPrimary: Colors.white,
+            surface: _postmanSurface,
+            onSurface: _postmanText,
+            outline: _postmanBorder,
           ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _postmanOrange,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: _postmanSurface,
+            foregroundColor: _postmanText,
+            elevation: 0,
+            centerTitle: true,
+          ),
+          cardTheme: CardThemeData(
+            color: _postmanSurface,
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
+              side: const BorderSide(color: _postmanBorder, width: 1),
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _postmanOrange,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _postmanOrange,
+              side: const BorderSide(color: _postmanOrange),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+          textTheme: const TextTheme(
+            bodyMedium: TextStyle(color: _postmanText, fontSize: 14),
+            titleMedium: TextStyle(
+              color: _postmanText,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+            labelLarge: TextStyle(
+              color: _postmanText,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: _postmanOrange,
-            side: const BorderSide(color: _postmanOrange),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-        ),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: _postmanText, fontSize: 14),
-          titleMedium: TextStyle(
-            color: _postmanText,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-          labelLarge: TextStyle(
-            color: _postmanText,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        home: const MyHomePage(title: 'API Client'),
+        // builder: (context, child) {
+        //   return InAppDevTools(
+        //     color: Colors.purple,
+        //     child: child ?? const SizedBox.shrink(),
+        //   );
+        // },
       ),
-      home: InAppDevTools(child: const MyHomePage(title: 'API Client')),
-      // builder: (context, child) {
-      //   return InAppDevTools(
-      //     color: Colors.purple,
-      //     child: child ?? const SizedBox.shrink(),
-      //   );
-      // },
     );
   }
 }
@@ -130,13 +134,35 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isLoading = false;
   String? _error;
 
+  /// Preset scenarios (public hosts only); bodies filled via [HttpTestScenario.resolveBody].
+  late final List<HttpTestScenario> _httpPresets =
+      HttpTestScenario.resolvedPresets();
+
+  /// Runs a curated [HttpTestScenario] (see [http_test_framework.dart]).
+  /// [_httpPresets] entries are already [HttpTestScenario.resolveBody]d.
+  Future<void> runHttpScenario(HttpTestScenario scenario) {
+    return executeRequest(
+      scenario.uri.toString(),
+      method: scenario.method,
+      headers: scenario.headers,
+      bodyBytes: scenario.bodyBytes,
+      label: scenario.label,
+    );
+  }
+
   /// Single entry point: executes request and updates timeline.
   /// [url] – request URL.
   /// [method] – HTTP method (default GET).
+  /// [headers] – optional request headers (e.g. `Content-Type`, `Accept`).
+  /// [bodyBytes] – optional request body (UTF-8 or binary).
+  /// [label] – short label for the timeline panel.
   /// [onResponse] – optional callback with response stream (e.g. for saving to file).
   Future<void> executeRequest(
     String url, {
     String method = 'GET',
+    Map<String, String>? headers,
+    List<int>? bodyBytes,
+    String? label,
     Future<void> Function(HttpClientResponse response, List<int> body)?
     onResponse,
   }) async {
@@ -154,16 +180,22 @@ class _MyHomePageState extends State<MyHomePage> {
     int? statusCode;
 
     try {
-      // 1. Connection phase
-      final request = await client.getUrl(Uri.parse(url));
+      final uri = Uri.parse(url);
+      // 1. Connection + request line + headers
+      final request = await client.openUrl(method, uri);
+      headers?.forEach((name, value) => request.headers.set(name, value));
+      if (bodyBytes != null && bodyBytes.isNotEmpty) {
+        request.add(bodyBytes);
+      }
+
       final connectedAt = DateTime.now();
       connectionDuration = connectedAt.difference(startTime);
 
-      // 2. TTFB (wait for first byte)
-      HttpClientResponse response = await request.close();
+      // 2. TTFB (first response byte) and transfer
+      final HttpClientResponse response = await request.close();
       statusCode = response.statusCode;
       DateTime? ttfbAt;
-      List<int> fullBody = [];
+      final List<int> fullBody = [];
 
       await for (final chunk in response) {
         ttfbAt ??= DateTime.now();
@@ -171,10 +203,10 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       final transferDoneAt = DateTime.now();
-      if (ttfbAt != null) {
-        ttfbDuration = ttfbAt.difference(connectedAt);
-        transferDuration = transferDoneAt.difference(ttfbAt);
-      }
+      // HEAD / empty body: no chunks — treat TTFB as end of response stream.
+      ttfbAt ??= transferDoneAt;
+      ttfbDuration = ttfbAt.difference(connectedAt);
+      transferDuration = transferDoneAt.difference(ttfbAt);
 
       if (onResponse != null) {
         await onResponse(response, fullBody);
@@ -188,6 +220,7 @@ class _MyHomePageState extends State<MyHomePage> {
           transferTime: transferDuration,
           totalTime: totalTime,
           statusCode: statusCode,
+          label: label,
         );
         _isLoading = false;
         _error = null;
@@ -206,11 +239,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // --- Use case: simple API call (e.g. GitHub user) ---
   Future<void> fetchGitHubUser() async {
-    await executeRequest('https://api.github.com/users/dart-lang');
+    await executeRequest(
+      'https://api.github.com/users/dart-lang',
+      headers: const {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'inapp_devtools-example',
+      },
+    );
   }
 
   Future<void> fetchGitHubUserError() async {
-    await executeRequest('https://api.github.com/users/dart-lang-error?q=123');
+    await executeRequest(
+      'https://api.github.com/users/dart-lang-error?q=123',
+      headers: const {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'inapp_devtools-example',
+      },
+    );
   }
 
   // --- Use case: request with timing (video URL, no file save) ---
@@ -255,6 +300,19 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(widget.title),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'API Playground',
+            icon: const Icon(Icons.play_circle_outline),
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (context) => const ApiPlaygroundScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -263,49 +321,87 @@ class _MyHomePageState extends State<MyHomePage> {
           Container(
             padding: const EdgeInsets.all(16),
             color: _postmanSurface,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Requests',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: _postmanTextMuted,
-                    fontSize: 12,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Requests',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: _postmanTextMuted,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _ActionButton(
-                      label: 'GitHub user',
-                      icon: Icons.code,
-                      onPressed: _isLoading ? null : fetchGitHubUser,
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _ActionButton(
+                        label: 'GitHub user',
+                        icon: Icons.code,
+                        onPressed: _isLoading ? null : fetchGitHubUser,
+                      ),
+                      _ActionButton(
+                        label: 'GitHub user Error',
+                        icon: Icons.code,
+                        onPressed: _isLoading ? null : fetchGitHubUserError,
+                      ),
+                      _ActionButton(
+                        label: 'Video (timing)',
+                        icon: Icons.timer,
+                        onPressed: _isLoading ? null : requestWithStopWatch,
+                      ),
+                      _ActionButton(
+                        label: 'Download video',
+                        icon: Icons.download,
+                        onPressed: _isLoading ? null : downloadVideo,
+                      ),
+                      _ActionButton(
+                        label: 'Snackbar',
+                        icon: Icons.message,
+                        onPressed: _isLoading ? null : showSnackbar,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'HTTP matrix (public APIs)',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: _postmanTextMuted,
+                      fontSize: 12,
                     ),
-                    _ActionButton(
-                      label: 'GitHub user Error',
-                      icon: Icons.code,
-                      onPressed: _isLoading ? null : fetchGitHubUserError,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Verbs & payloads: https://httpbingo.org/ — JSON / form / text '
+                    'echo. Response types: XML, HTML, PNG, GitHub JSON.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: _postmanTextMuted,
+                      fontSize: 11,
+                      height: 1.35,
                     ),
-                    _ActionButton(
-                      label: 'Video (timing)',
-                      icon: Icons.timer,
-                      onPressed: _isLoading ? null : requestWithStopWatch,
-                    ),
-                    _ActionButton(
-                      label: 'Download video',
-                      icon: Icons.download,
-                      onPressed: _isLoading ? null : downloadVideo,
-                    ),
-                    _ActionButton(
-                      label: 'Snackbar',
-                      icon: Icons.message,
-                      onPressed: _isLoading ? null : showSnackbar,
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final scenario in _httpPresets)
+                        Tooltip(
+                          message: scenario.hint,
+                          waitDuration: const Duration(milliseconds: 400),
+                          child: OutlinedButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () => runHttpScenario(scenario),
+                            child: Text(scenario.label),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           const Divider(height: 1, color: _postmanBorder),
@@ -453,12 +549,30 @@ class _TimelinePanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  'Response timing',
-                  style: Theme.of(context).textTheme.titleMedium,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Response timing',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if (data.label != null && data.label!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          data.label!,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: _postmanTextMuted,
+                                fontSize: 12,
+                              ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
                 if (data.statusCode != null) ...[
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
