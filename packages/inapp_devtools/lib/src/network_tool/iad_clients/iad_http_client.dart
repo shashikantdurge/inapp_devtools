@@ -460,7 +460,8 @@ class IADNetworkHttpClientRequest implements HttpClientRequest {
   }
 }
 
-class IADNetworkHttpClientResponse implements HttpClientResponse {
+class IADNetworkHttpClientResponse extends Stream<List<int>>
+    implements HttpClientResponse {
   final HttpClientResponse _inner;
   final HttpProfileData _profileData;
   IADNetworkHttpClientResponse(this._inner, this._profileData);
@@ -473,26 +474,6 @@ class IADNetworkHttpClientResponse implements HttpClientResponse {
 
   @override
   int get contentLength => _inner.contentLength;
-
-  @override
-  Future<bool> any(bool Function(List<int> element) test) => _inner.any(test);
-
-  @override
-  Stream<List<int>> asBroadcastStream({
-    void Function(StreamSubscription<List<int>> subscription)? onListen,
-    void Function(StreamSubscription<List<int>> subscription)? onCancel,
-  }) => _inner.asBroadcastStream(onListen: onListen, onCancel: onCancel);
-
-  @override
-  Stream<E> asyncExpand<E>(Stream<E>? Function(List<int> event) convert) =>
-      _inner.asyncExpand(convert);
-
-  @override
-  Stream<E> asyncMap<E>(FutureOr<E> Function(List<int> event) convert) =>
-      _inner.asyncMap(convert);
-
-  @override
-  Stream<R> cast<R>() => _inner.cast<R>();
 
   @override
   X509Certificate? get certificate => _inner.certificate;
@@ -514,71 +495,10 @@ class IADNetworkHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  Future<E> drain<E>([E? futureValue]) {
-    futureValue ??= futureValue as E;
-    return listen(null, cancelOnError: true).asFuture<E>(futureValue);
-  }
-
-  @override
-  Future<List<int>> elementAt(int index) => _inner.elementAt(index);
-
-  @override
-  Future<bool> every(bool Function(List<int> element) test) =>
-      _inner.every(test);
-
-  @override
-  Stream<S> expand<S>(Iterable<S> Function(List<int> element) convert) =>
-      _inner.expand(convert);
-
-  @override
-  Future<List<int>> get first => _inner.first;
-
-  @override
-  Future<List<int>> firstWhere(
-    bool Function(List<int> element) test, {
-    List<int> Function()? orElse,
-  }) => _inner.firstWhere(test, orElse: orElse);
-
-  @override
-  Future<S> fold<S>(
-    S initialValue,
-    S Function(S previous, List<int> element) combine,
-  ) => _inner.fold(initialValue, combine);
-
-  @override
-  Future<void> forEach(void Function(List<int> element) action) =>
-      _inner.forEach(action);
-
-  @override
-  Stream<List<int>> handleError(Function onError, {bool test(error)?}) =>
-      _inner.handleError(onError, test: test);
-
-  @override
   HttpHeaders get headers => _inner.headers;
 
   @override
-  bool get isBroadcast => _inner.isBroadcast;
-
-  @override
-  Future<bool> get isEmpty => _inner.isEmpty;
-
-  @override
   bool get isRedirect => _inner.isRedirect;
-
-  @override
-  Future<String> join([String separator = ""]) => _inner.join(separator);
-
-  @override
-  Future<List<int>> get last => _inner.last;
-
-  @override
-  Future<List<int>> lastWhere(
-    bool Function(List<int> element) test, {
-    List<int> Function()? orElse,
-  }) => _inner.lastWhere(test, orElse: orElse);
-
-  @override
-  Future<int> get length => _inner.length;
 
   @override
   StreamSubscription<List<int>> listen(
@@ -606,14 +526,7 @@ class IADNetworkHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  Stream<S> map<S>(S Function(List<int> event) convert) => _inner.map(convert);
-
-  @override
   bool get persistentConnection => _inner.persistentConnection;
-
-  @override
-  Future<dynamic> pipe(StreamConsumer<List<int>> streamConsumer) =>
-      _inner.pipe(streamConsumer);
 
   @override
   Future<HttpClientResponse> redirect([
@@ -624,60 +537,4 @@ class IADNetworkHttpClientResponse implements HttpClientResponse {
 
   @override
   List<RedirectInfo> get redirects => _inner.redirects;
-
-  @override
-  Future<List<int>> reduce(
-    List<int> Function(List<int> previous, List<int> element) combine,
-  ) => _inner.reduce(combine);
-
-  @override
-  Future<List<int>> get single => _inner.single;
-
-  @override
-  Future<List<int>> singleWhere(
-    bool Function(List<int> element) test, {
-    List<int> Function()? orElse,
-  }) => _inner.singleWhere(test, orElse: orElse);
-
-  @override
-  Stream<List<int>> skip(int count) => _inner.skip(count);
-
-  @override
-  Stream<List<int>> skipWhile(bool Function(List<int> element) test) =>
-      _inner.skipWhile(test);
-
-  @override
-  Stream<List<int>> take(int count) => _inner.take(count);
-
-  @override
-  Stream<List<int>> takeWhile(bool Function(List<int> element) test) =>
-      _inner.takeWhile(test);
-
-  @override
-  Stream<List<int>> timeout(
-    Duration timeLimit, {
-    void Function(EventSink<List<int>> sink)? onTimeout,
-  }) => _inner.timeout(timeLimit, onTimeout: onTimeout);
-
-  @override
-  Future<List<List<int>>> toList() => _inner.toList();
-
-  @override
-  Future<Set<List<int>>> toSet() => _inner.toSet();
-
-  @override
-  Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) =>
-      _inner.transform(streamTransformer);
-
-  @override
-  Stream<List<int>> where(bool Function(List<int> event) test) =>
-      _inner.where(test);
-
-  @override
-  Future<bool> contains(Object? needle) => _inner.contains(needle);
-
-  @override
-  Stream<List<int>> distinct([
-    bool Function(List<int> previous, List<int> next)? equals,
-  ]) => _inner.distinct(equals);
 }
