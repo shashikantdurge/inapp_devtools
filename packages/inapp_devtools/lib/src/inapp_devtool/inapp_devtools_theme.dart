@@ -210,7 +210,7 @@ class InAppDevToolsTheme extends InheritedWidget {
 /// borders `#404040`, primary text `#E0E0E0`, secondary text `#9E9E9E`.
 ThemeData getDakTheme() {
   const scaffoldBackground = Color(0xFF1E1E1E);
-  const surface = Color(0xFF2D2D2D);
+  const surface = Color(0xFF1E1E1E);
   const surfaceContainer = Color(0xFF333333);
   const outline = Color(0xFF404040);
   const postmanOrange = Color(0xFFFF6C37);

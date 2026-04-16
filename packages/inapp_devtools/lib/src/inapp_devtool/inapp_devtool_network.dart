@@ -18,28 +18,67 @@ class InAppDevtoolNetwork extends StatefulWidget with InAppDevToolsItem {
 }
 
 class _InAppDevtoolNetworkState extends State<InAppDevtoolNetwork> {
+  final HeroController _heroController = HeroController();
+  HttpProfileData? _selectedHttpProfileData;
+
+  @override
+  void dispose() {
+    _heroController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return InAppDevToolsScaffold(
-      body: StreamBuilder(
-        stream: HttpProfiler.instance.getProfileDataStream(),
-        builder: (context, snapshot) {
-          final httpProfile = snapshot.data?.lastOrNull;
-          if (httpProfile != null) {
-            return _HttpProfileBodyWidget(httpProfileData: httpProfile);
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            separatorBuilder: (context, index) =>
-                Divider(color: Colors.grey[850]),
-            itemCount: snapshot.data?.length ?? 0,
-            itemBuilder: (context, index) {
-              return _HttpProfileHeaderWidget(
-                httpProfileData: snapshot.data![index],
-              );
-            },
-          );
-        },
+      body: HeroControllerScope(
+        controller: _heroController,
+        child: Navigator(
+          pages: [
+            //Requests list page
+            MaterialPage(
+              child: StreamBuilder(
+                stream: HttpProfiler.instance.getProfileDataStream(),
+                builder: (context, snapshot) {
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    separatorBuilder: (context, index) =>
+                        Divider(color: Colors.grey[850]),
+                    itemCount: snapshot.data?.length ?? 0,
+                    itemBuilder: (context, index) {
+                      final data = snapshot.data![index];
+                      return _HttpProfileHeaderWidget(
+                        httpProfileData: data,
+                        onTap: () {
+                          setState(() {
+                            _selectedHttpProfileData = data;
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+
+            //Selected request details page
+            if (_selectedHttpProfileData != null)
+              _FadeTransitionPage(
+                child: _HttpProfileBodyWidget(
+                  httpProfileData: _selectedHttpProfileData!,
+                  popCallback: () {
+                    setState(() {
+                      _selectedHttpProfileData = null;
+                    });
+                  },
+                ),
+              ),
+          ],
+          onDidRemovePage: (page) {
+            setState(() {
+              _selectedHttpProfileData = null;
+            });
+          },
+        ),
       ),
     );
   }
@@ -49,10 +88,11 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
   const _HttpProfileHeaderWidget({
     required this.httpProfileData,
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.onTap,
   });
   final EdgeInsets padding;
   final HttpProfileData httpProfileData;
-
+  final VoidCallback? onTap;
   Color getColorByMethod(String method) {
     switch (method.toUpperCase()) {
       case 'GET':
@@ -107,40 +147,50 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
     if (httpProfileData.uri.hasFragment) {
       displayUrl += '#${httpProfileData.uri.fragment}';
     }
-    return Padding(
-      padding: padding,
-      child: Row(
-        spacing: 8,
-        children: [
-          Text(
-            httpProfileData.method.toUpperCase(),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-              color: getColorByMethod(httpProfileData.method),
-            ),
+
+    Widget child = Row(
+      spacing: 8,
+      children: [
+        Text(
+          httpProfileData.method.toUpperCase(),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+            color: getColorByMethod(httpProfileData.method),
           ),
-          Expanded(child: Text(displayUrl, style: TextStyle(fontSize: 12))),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              httpProfileData.response.statusCode?.toString() ?? '',
-              style: TextStyle(fontSize: 12, color: statusColor),
-            ),
+        ),
+        Expanded(child: Text(displayUrl, style: TextStyle(fontSize: 12))),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(4),
           ),
-        ],
+          child: Text(
+            httpProfileData.response.statusCode?.toString() ?? '',
+            style: TextStyle(fontSize: 12, color: statusColor),
+          ),
+        ),
+      ],
+    );
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: padding,
+        child: Hero(tag: httpProfileData, child: child),
       ),
     );
   }
 }
 
 class _HttpProfileBodyWidget extends StatefulWidget {
-  const _HttpProfileBodyWidget({required this.httpProfileData});
+  const _HttpProfileBodyWidget({
+    required this.httpProfileData,
+    this.popCallback,
+  });
   final HttpProfileData httpProfileData;
+  final VoidCallback? popCallback;
 
   @override
   State<_HttpProfileBodyWidget> createState() => __HttpProfileBodyWidgetState();
@@ -205,45 +255,56 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
                 _HttpProfileHeaderWidget(
                   httpProfileData: widget.httpProfileData,
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  onTap: widget.popCallback,
                 ),
-                TabBar(
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  padding: const EdgeInsets.only(left: 8, right: 8),
-                  labelPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 0,
-                  ),
-                  indicatorSize: TabBarIndicatorSize.label,
-                  indicator: UnderlineTabIndicator(
-                    borderSide: BorderSide(
-                      color: t.appBarMenuUnderlineColor,
-                      width: 2,
+                Row(
+                  children: [
+                    Expanded(
+                      child: TabBar(
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
+                        padding: const EdgeInsets.only(left: 8, right: 8),
+                        labelPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 0,
+                        ),
+                        indicatorSize: TabBarIndicatorSize.label,
+                        indicator: UnderlineTabIndicator(
+                          borderSide: BorderSide(
+                            color: t.appBarMenuUnderlineColor,
+                            width: 2,
+                          ),
+                          insets: EdgeInsets.zero,
+                        ),
+                        dividerColor: Colors.transparent,
+                        dividerHeight: 1,
+                        labelColor: const Color(0xFFE0E0E0),
+                        unselectedLabelColor: const Color(0xFF9E9E9E),
+                        labelStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overlayColor: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.pressed) ||
+                              states.contains(WidgetState.hovered)) {
+                            return t.appBarToolSelectorBackgroundColor
+                                .withValues(alpha: 0.4);
+                          }
+                          return null;
+                        }),
+                        tabs: tabViews.map((tab) => tab.$1).toList(),
+                      ),
                     ),
-                    insets: EdgeInsets.zero,
-                  ),
-                  dividerColor: Colors.transparent,
-                  dividerHeight: 1,
-                  labelColor: const Color(0xFFE0E0E0),
-                  unselectedLabelColor: const Color(0xFF9E9E9E),
-                  labelStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overlayColor: WidgetStateProperty.resolveWith((states) {
-                    if (states.contains(WidgetState.pressed) ||
-                        states.contains(WidgetState.hovered)) {
-                      return t.appBarToolSelectorBackgroundColor.withValues(
-                        alpha: 0.4,
-                      );
-                    }
-                    return null;
-                  }),
-                  tabs: tabViews.map((tab) => tab.$1).toList(),
+                    IconButton(onPressed: null, icon: Icon(Icons.copy)),
+                    IconButton(
+                      onPressed: widget.popCallback,
+                      icon: Icon(Icons.close),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -487,6 +548,7 @@ class _DataDisplayWidgetState extends State<_DataDisplayWidget> {
 }
 
 //################################## Key Value Row Widget ###################################
+
 class _KeyValueRowWidget extends StatelessWidget {
   const _KeyValueRowWidget({
     required this.keyWidget,
@@ -518,6 +580,32 @@ class _KeyValueRowWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+//################################## Fade Transition Page ###################################
+
+class _FadeTransitionPage extends Page<void> {
+  const _FadeTransitionPage({required this.child});
+
+  final Widget child;
+
+  @override
+  Route<void> createRoute(BuildContext context) {
+    return PageRouteBuilder<void>(
+      settings: this,
+      barrierColor: Theme.of(context).colorScheme.surface,
+      transitionDuration: const Duration(milliseconds: 220),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (context, animation, secondaryAnimation) => child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final curvedAnimation = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInExpo,
+        );
+        return FadeTransition(opacity: curvedAnimation, child: child);
+      },
     );
   }
 }
