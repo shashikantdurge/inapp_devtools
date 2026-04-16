@@ -235,6 +235,8 @@
 //   void _updated() => _lastUpdateTime = DateTime.now().microsecondsSinceEpoch;
 // }
 
+import 'dart:convert';
+
 import 'http_profiler.dart';
 
 class HttpProfileData {
@@ -350,4 +352,81 @@ class HttpProfileResponseData {
       // 'responseBody': utf8.decode(responseBody),
     };
   }
+}
+
+extension HttpProfileDataXUtils on HttpProfileData {
+  /// Builds a POSIX `curl` command (line continuations with `\`) that reproduces
+  /// this request as closely as possible.
+  ///
+  /// Request body is passed as a literal when it is valid UTF-8 without NUL
+  /// bytes; otherwise it is embedded via `printf` + `base64 -d` for binary
+  /// safety.
+  String toCurl() => _httpProfileRequestDataToCurl(request);
+}
+
+String _httpProfileRequestDataToCurl(HttpProfileRequestData data) {
+  final lines = <String>[];
+
+  lines.add('-X ${_shellEscapeSingleQuoted(data.method)}');
+
+  final headers = data.headers;
+  final hasBody = data.requestBody.isNotEmpty;
+  if (headers != null) {
+    for (final entry in headers.entries) {
+      if (hasBody && _omitHeaderWhenSendingBody(entry.key)) {
+        continue;
+      }
+      for (final value in entry.value) {
+        lines.add('-H ${_shellEscapeSingleQuoted('${entry.key}: $value')}');
+      }
+    }
+  }
+
+  final hasCookieHeader =
+      headers?.keys.any((k) => k.toLowerCase() == 'cookie') ?? false;
+  if (!hasCookieHeader && data.cookies != null && data.cookies!.isNotEmpty) {
+    lines.add('-b ${_shellEscapeSingleQuoted(data.cookies!.join('; '))}');
+  }
+
+  if (hasBody) {
+    lines.add('--data-binary ${_curlDataBinaryArgument(data.requestBody)}');
+  }
+
+  lines.add(_shellEscapeSingleQuoted(data.uri.toString()));
+
+  return 'curl \\\n  ${lines.join(' \\\n  ')}';
+}
+
+bool _omitHeaderWhenSendingBody(String name) {
+  switch (name.toLowerCase()) {
+    case 'content-length':
+    case 'transfer-encoding':
+      return true;
+    default:
+      return false;
+  }
+}
+
+String _shellEscapeSingleQuoted(String s) {
+  return "'${s.replaceAll("'", "'\\''")}'";
+}
+
+String _curlDataBinaryArgument(List<int> bytes) {
+  if (_canUseUtf8BodyLiteral(bytes)) {
+    return _shellEscapeSingleQuoted(utf8.decode(bytes));
+  }
+  final b64 = base64Encode(bytes);
+  final escapedB64 = _shellEscapeSingleQuoted(b64);
+  return '"${r'$'}(printf \'%s\' $escapedB64 | base64 -d)"';
+}
+
+bool _canUseUtf8BodyLiteral(List<int> bytes) {
+  if (bytes.isEmpty) return true;
+  String decoded;
+  try {
+    decoded = utf8.decode(bytes);
+  } catch (_) {
+    return false;
+  }
+  return !decoded.contains('\x00');
 }

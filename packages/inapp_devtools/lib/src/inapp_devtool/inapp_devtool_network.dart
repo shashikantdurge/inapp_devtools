@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
 import 'package:inapp_devtools/src/network_tool/http_profile_data.dart';
@@ -384,6 +384,19 @@ class _TabViewOverview extends StatelessWidget {
               keyWidget: Text('End Time'),
               valueWidget: Text(formatLocalTime(endTime)),
             ),
+          Divider(),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(
+                  ClipboardData(text: httpProfileData.toCurl()),
+                );
+              },
+              icon: Icon(Icons.copy),
+              label: Text('cURL Command'),
+            ),
+          ),
         ],
       ),
     );
