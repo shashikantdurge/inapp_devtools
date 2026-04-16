@@ -4,6 +4,8 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:rxdart/transformers.dart';
+
 import '../http_profile_data.dart';
 
 class IADNetworkHttpOverrides extends HttpOverrides {
@@ -507,22 +509,26 @@ class IADNetworkHttpClientResponse extends Stream<List<int>>
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    final stream = _inner.map((event) {
-      _profileData.appendResponseData(event);
-      return event;
-    });
-    return stream.listen(
-      onData,
-      onError: (e, st) {
-        _profileData.finishResponseWithError(e.toString());
-        onError?.call(e, st);
-      },
-      onDone: () {
-        _profileData.finishResponse();
-        onDone?.call();
-      },
-      cancelOnError: cancelOnError,
-    );
+    return _inner
+        .transform(
+          DoStreamTransformer(
+            onDone: () {
+              _profileData.finishResponse();
+            },
+            onError: (e, st) {
+              _profileData.finishResponseWithError(e.toString());
+            },
+            onData: (event) {
+              _profileData.appendResponseData(event);
+            },
+          ),
+        )
+        .listen(
+          onData,
+          onError: onError,
+          onDone: onDone,
+          cancelOnError: cancelOnError,
+        );
   }
 
   @override
