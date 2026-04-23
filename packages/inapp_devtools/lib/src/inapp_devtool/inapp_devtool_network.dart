@@ -477,29 +477,52 @@ class _TabViewHeadersState extends State<_TabViewHeaders> {
 
 //################################## Response tab widget ###################################
 
-class _TabViewResponse extends StatelessWidget {
+class _TabViewResponse extends StatefulWidget {
   const _TabViewResponse({required this.httpProfileData});
   final HttpProfileData httpProfileData;
 
   @override
+  State<_TabViewResponse> createState() => _TabViewResponseState();
+}
+
+class _TabViewResponseState extends State<_TabViewResponse>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return _DataDisplayWidget(
-      data: httpProfileData.response.responseBody,
-      contentType: httpProfileData.response.headers?['content-type']?.first,
+      data: widget.httpProfileData.response.responseBody,
+      contentType:
+          widget.httpProfileData.response.headers?['content-type']?.first,
     );
   }
 }
 
 //################################## Payload tab widget ###################################
 
-class _TabViewRequest extends StatelessWidget {
+class _TabViewRequest extends StatefulWidget {
   const _TabViewRequest({required this.httpProfileData});
   final HttpProfileData httpProfileData;
+
+  @override
+  State<_TabViewRequest> createState() => _TabViewRequestState();
+}
+
+class _TabViewRequestState extends State<_TabViewRequest>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return _DataDisplayWidget(
-      data: httpProfileData.request.requestBody,
-      contentType: httpProfileData.request.headers?['content-type']?.first,
+      data: widget.httpProfileData.request.requestBody,
+      contentType:
+          widget.httpProfileData.request.headers?['content-type']?.first,
     );
   }
 }
