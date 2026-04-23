@@ -362,6 +362,13 @@ extension HttpProfileDataXUtils on HttpProfileData {
   /// bytes; otherwise it is embedded via `printf` + `base64 -d` for binary
   /// safety.
   String toCurl() => _httpProfileRequestDataToCurl(request);
+
+  String get statusCodeWithValue {
+    if (response.statusCode == null && response.reasonPhrase == null) {
+      return 'pending';
+    }
+    return [response.statusCode?.toString(), response.reasonPhrase].join(' ');
+  }
 }
 
 String _httpProfileRequestDataToCurl(HttpProfileRequestData data) {

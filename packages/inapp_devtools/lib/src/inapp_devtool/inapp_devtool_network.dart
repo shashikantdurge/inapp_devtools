@@ -167,7 +167,7 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
-            httpProfileData.response.statusCode?.toString() ?? '',
+            httpProfileData.response.statusCode?.toString() ?? 'pending',
             style: TextStyle(fontSize: 12, color: statusColor),
           ),
         ),
@@ -259,6 +259,7 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
                 ),
                 Row(
                   children: [
+                    //Tab Bar
                     Expanded(
                       child: TabBar(
                         isScrollable: true,
@@ -299,7 +300,36 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
                         tabs: tabViews.map((tab) => tab.$1).toList(),
                       ),
                     ),
-                    IconButton(onPressed: null, icon: Icon(Icons.copy)),
+
+                    //Copy button
+                    Builder(
+                      builder: (context) {
+                        return ListenableBuilder(
+                          listenable: DefaultTabController.of(context),
+                          builder: (BuildContext context, Widget? child) {
+                            final index = DefaultTabController.of(
+                              context,
+                            ).index;
+                            final widget = tabViews[index].$2;
+                            return IconButton(
+                              onPressed: widget is _CopyableWidget
+                                  ? () {
+                                      if (widget.getWidgetContent()
+                                          case String content) {
+                                        Clipboard.setData(
+                                          ClipboardData(text: content),
+                                        );
+                                      }
+                                    }
+                                  : null,
+                              icon: Icon(Icons.copy),
+                            );
+                          },
+                        );
+                      },
+                    ),
+
+                    //Close button
                     IconButton(
                       onPressed: widget.popCallback,
                       icon: Icon(Icons.close),
@@ -320,9 +350,43 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
 
 //################################## Overview tab widget ###################################
 
-class _TabViewOverview extends StatelessWidget {
+class _TabViewOverview extends StatelessWidget with _CopyableWidget {
   const _TabViewOverview({required this.httpProfileData});
   final HttpProfileData httpProfileData;
+
+  @override
+  String? getWidgetContent() {
+    final data = httpProfileData;
+    final firstLine = '${data.method.toUpperCase()} ${data.uri}';
+
+    final lines = <String>[firstLine, 'Status: ${data.statusCodeWithValue}'];
+
+    if (data.response.headers case {'content-type': [var contentType]}) {
+      lines.add('Content Type: $contentType');
+    }
+
+    DateTime? startTime;
+    DateTime? endTime;
+    if (data.request.requestStartedAt case final DateTime requestStartedAt) {
+      startTime = requestStartedAt;
+    }
+    if (data.response.responseEndedAt case final DateTime responseEndedAt) {
+      endTime = responseEndedAt;
+    }
+    if (startTime != null && endTime != null) {
+      final responseTime = endTime.difference(startTime);
+      lines.add('Response Time: ${responseTime.inMilliseconds} ms');
+    }
+    if (startTime != null) {
+      lines.add('Start Time: ${formatLocalTime(startTime)}');
+    }
+    if (endTime != null) {
+      lines.add('End Time: ${formatLocalTime(endTime)}');
+    }
+
+    return lines.join('\n');
+  }
+
   @override
   Widget build(BuildContext context) {
     Duration? responseTime;
@@ -353,12 +417,7 @@ class _TabViewOverview extends StatelessWidget {
           ),
           _KeyValueRowWidget(
             keyWidget: Text('Status'),
-            valueWidget: Text(
-              [
-                httpProfileData.response.statusCode?.toString() ?? '',
-                httpProfileData.response.reasonPhrase ?? '',
-              ].join(' '),
-            ),
+            valueWidget: Text(httpProfileData.statusCodeWithValue),
           ),
           if (httpProfileData.response.headers case {
             'content-type': [var contentType],
@@ -405,9 +464,35 @@ class _TabViewOverview extends StatelessWidget {
 
 //################################## Headers tab widget ###################################
 
-class _TabViewHeaders extends StatefulWidget {
+class _TabViewHeaders extends StatefulWidget with _CopyableWidget {
   const _TabViewHeaders({required this.httpProfileData});
   final HttpProfileData httpProfileData;
+
+  @override
+  String? getWidgetContent() {
+    final d = httpProfileData;
+    final buffer = StringBuffer()
+      ..writeln('${d.method.toUpperCase()} ${d.uri}')
+      ..writeln('Status Code: ${d.statusCodeWithValue}');
+
+    if (d.response.headers case Map<String, List<String>> responseHeaders) {
+      buffer.writeln();
+      buffer.writeln('Response Headers');
+      for (final e in responseHeaders.entries) {
+        buffer.writeln('${e.key}: ${e.value.join(', ')}');
+      }
+    }
+
+    if (d.request.headers case Map<String, List<String>> requestHeaders) {
+      buffer.writeln();
+      buffer.writeln('Request Headers');
+      for (final e in requestHeaders.entries) {
+        buffer.writeln('${e.key}: ${e.value.join(', ')}');
+      }
+    }
+
+    return buffer.toString().trimRight();
+  }
 
   @override
   State<_TabViewHeaders> createState() => _TabViewHeadersState();
@@ -417,59 +502,61 @@ class _TabViewHeadersState extends State<_TabViewHeaders> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ExpansionTile(
-            title: Text('General'),
-            children: [
-              _KeyValueRowWidget(
-                keyWidget: Text('Method'),
-                valueWidget: Text(widget.httpProfileData.method.toUpperCase()),
-              ),
-              _KeyValueRowWidget(
-                keyWidget: Text('Request URL'),
-                valueWidget: Text(widget.httpProfileData.uri.toString()),
-              ),
-              _KeyValueRowWidget(
-                keyWidget: Text('Status Code'),
-                valueWidget: Text(
-                  [
-                    widget.httpProfileData.response.statusCode?.toString() ??
-                        '',
-                    widget.httpProfileData.response.reasonPhrase ?? '',
-                  ].join(' '),
+      child: SelectionArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ExpansionTile(
+              title: SelectableText('General'),
+              children: [
+                _KeyValueRowWidget(
+                  keyWidget: SelectableText('Method'),
+                  valueWidget: SelectableText(
+                    widget.httpProfileData.method.toUpperCase(),
+                  ),
                 ),
+                _KeyValueRowWidget(
+                  keyWidget: SelectableText('Request URL'),
+                  valueWidget: SelectableText(
+                    widget.httpProfileData.uri.toString(),
+                  ),
+                ),
+                _KeyValueRowWidget(
+                  keyWidget: SelectableText('Status Code'),
+                  valueWidget: SelectableText(
+                    widget.httpProfileData.statusCodeWithValue,
+                  ),
+                ),
+              ],
+            ),
+
+            if (widget.httpProfileData.response.headers
+                case Map<String, List<String>> headers)
+              ExpansionTile(
+                title: Text('Response Headers'),
+                children: [
+                  for (final header in headers.entries)
+                    _KeyValueRowWidget(
+                      keyWidget: Text(header.key),
+                      valueWidget: Text(header.value.join(', ')),
+                    ),
+                ],
               ),
-            ],
-          ),
 
-          if (widget.httpProfileData.response.headers
-              case Map<String, List<String>> headers)
-            ExpansionTile(
-              title: Text('Response Headers'),
-              children: [
-                for (final header in headers.entries)
-                  _KeyValueRowWidget(
-                    keyWidget: Text(header.key),
-                    valueWidget: Text(header.value.join(', ')),
-                  ),
-              ],
-            ),
-
-          if (widget.httpProfileData.request.headers
-              case Map<String, List<String>> headers)
-            ExpansionTile(
-              title: Text('Request Headers'),
-              children: [
-                for (final header in headers.entries)
-                  _KeyValueRowWidget(
-                    keyWidget: Text(header.key),
-                    valueWidget: Text(header.value.join(', ')),
-                  ),
-              ],
-            ),
-        ],
+            if (widget.httpProfileData.request.headers
+                case Map<String, List<String>> headers)
+              ExpansionTile(
+                title: Text('Request Headers'),
+                children: [
+                  for (final header in headers.entries)
+                    _KeyValueRowWidget(
+                      keyWidget: Text(header.key),
+                      valueWidget: Text(header.value.join(', ')),
+                    ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -477,9 +564,27 @@ class _TabViewHeadersState extends State<_TabViewHeaders> {
 
 //################################## Response tab widget ###################################
 
-class _TabViewResponse extends StatefulWidget {
+class _TabViewResponse extends StatefulWidget with _CopyableWidget {
   const _TabViewResponse({required this.httpProfileData});
   final HttpProfileData httpProfileData;
+
+  @override
+  String? getWidgetContent() {
+    try {
+      final utf8DecodedBody = utf8.decode(
+        httpProfileData.response.responseBody,
+      );
+      try {
+        return JsonEncoder.withIndent(
+          '\t',
+        ).convert(jsonDecode(utf8DecodedBody));
+      } catch (e) {
+        return utf8DecodedBody;
+      }
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   State<_TabViewResponse> createState() => _TabViewResponseState();
@@ -503,9 +608,25 @@ class _TabViewResponseState extends State<_TabViewResponse>
 
 //################################## Payload tab widget ###################################
 
-class _TabViewRequest extends StatefulWidget {
+class _TabViewRequest extends StatefulWidget with _CopyableWidget {
   const _TabViewRequest({required this.httpProfileData});
   final HttpProfileData httpProfileData;
+
+  @override
+  String? getWidgetContent() {
+    try {
+      final utf8DecodedBody = utf8.decode(httpProfileData.request.requestBody);
+      try {
+        return JsonEncoder.withIndent(
+          '\t',
+        ).convert(jsonDecode(utf8DecodedBody));
+      } catch (e) {
+        return utf8DecodedBody;
+      }
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   State<_TabViewRequest> createState() => _TabViewRequestState();
@@ -632,8 +753,8 @@ class _FadeTransitionPage extends Page<void> {
     return PageRouteBuilder<void>(
       settings: this,
       barrierColor: Theme.of(context).colorScheme.surface,
-      transitionDuration: const Duration(milliseconds: 220),
-      reverseTransitionDuration: const Duration(milliseconds: 220),
+      transitionDuration: const Duration(milliseconds: 180),
+      reverseTransitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (context, animation, secondaryAnimation) => child,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curvedAnimation = CurvedAnimation(
@@ -644,4 +765,8 @@ class _FadeTransitionPage extends Page<void> {
       },
     );
   }
+}
+
+mixin _CopyableWidget on Widget {
+  String? getWidgetContent();
 }
