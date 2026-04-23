@@ -278,6 +278,7 @@ class _InAppDevToolsDraggablePanelState
     _left = 100;
     _top = 100;
     _panelSize = widget._sizeByMode[widget.panelMode]!;
+    _clampPosition();
   }
 
   @override
@@ -286,8 +287,6 @@ class _InAppDevToolsDraggablePanelState
     if (widget.maxSize != oldWidget.maxSize ||
         oldWidget.panelMode != widget.panelMode) {
       _panelSize = widget._sizeByMode[widget.panelMode]!;
-    }
-    if (oldWidget.panelMode != widget.panelMode) {
       _positionByMode[oldWidget.panelMode] = Offset(_left, _top);
       _left = _positionByMode[widget.panelMode]!.dx;
       if (widget.panelMode != InAppDevToolsPanelWindowMode.maximized &&
@@ -380,13 +379,6 @@ class _InAppDevToolsDraggablePanelState
 
   @override
   Widget build(BuildContext context) {
-    if (_left > widget.maxSize.width - _panelWidth) {
-      _left = widget.maxSize.width - _panelWidth;
-    }
-    if (_top > widget.maxSize.height - _panelHeight) {
-      _top = widget.maxSize.height - _panelHeight;
-    }
-
     return Stack(
       fit: StackFit.expand,
       children: [
