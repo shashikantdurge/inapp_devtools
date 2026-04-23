@@ -22,7 +22,11 @@ const _jsonEscapeSequencePattern = r'\\["\\/bfnrt]|\\u[0-9a-fA-F]{4}';
 /// - [lineNumber]: The line number in the visual tree representation
 /// - [key]: The JSON key (for object properties), array index (for arrays), or null
 sealed class JsonTreeData {
-  const JsonTreeData({required this.lineNumber, this.key});
+  const JsonTreeData({
+    required this.lineNumber,
+    this.getCopyableValue,
+    this.key,
+  });
 
   /// The line number where this node appears in the tree view.
   final int lineNumber;
@@ -30,9 +34,11 @@ sealed class JsonTreeData {
   /// The key associated with this node.
   ///
   /// For object properties: the property name (e.g., `"name"`)
-  /// For array items: the array index (e.g., `"[0]"`)
+  /// For array items: the array index (e.g., `[0]`)
   /// For root nodes: `null`
   final String? key;
+
+  final String? Function()? getCopyableValue;
 }
 
 /// Represents a JSON array node in the tree structure.
@@ -48,6 +54,7 @@ class ListTreeData extends JsonTreeData {
     required super.lineNumber,
     required this.collapsedValue,
     required this.itemCount,
+    super.getCopyableValue,
     super.key,
   });
 
@@ -76,6 +83,7 @@ class MapTreeData extends JsonTreeData {
     required super.lineNumber,
     required this.collapsedValue,
     required this.itemCount,
+    super.getCopyableValue,
     super.key,
   });
 
@@ -115,6 +123,7 @@ class PrimitiveTreeData extends JsonTreeData {
     required super.lineNumber,
     required this.primitiveType,
     required this.value,
+    super.getCopyableValue,
     super.key,
   });
 
@@ -155,6 +164,7 @@ class StringPrimitiveTreeData extends PrimitiveTreeData {
     required super.primitiveType,
     required super.value,
     required this.formattedValue,
+    String Function()? super.getCopyableValue,
     super.key,
   });
 
@@ -164,6 +174,10 @@ class StringPrimitiveTreeData extends PrimitiveTreeData {
   /// - The substring content
   /// - Whether it's plain text or a special escape sequence
   final List<(String, StringCharType)> formattedValue;
+
+  @override
+  String Function()? get getCopyableValue =>
+      super.getCopyableValue as String Function()?;
 
   @override
   String toString() => "$key : $formattedValue";
@@ -341,6 +355,7 @@ String _getCollapsedValue(String str) {
         collapsedValue: collapsedValue,
         itemCount: data.length,
         key: key,
+        getCopyableValue: () => _getBeautifiedEncodedValue(data),
       ),
       children: children,
       expanded: expanded,
@@ -393,6 +408,7 @@ String _getCollapsedValue(String str) {
         collapsedValue: collapsedValue,
         itemCount: data.length,
         key: key,
+        getCopyableValue: () => _getBeautifiedEncodedValue(data),
       ),
       children: children,
       expanded: expanded,
@@ -492,6 +508,7 @@ String _getCollapsedValue(String str) {
         primitiveType: primitiveType,
         key: key,
         value: primitiveValue,
+        getCopyableValue: () => data.toString(),
       ),
     );
   }
@@ -559,6 +576,7 @@ TreeViewNode<JsonTreeData> _buildFormattedStringNode(
       key: key,
       value: data,
       formattedValue: children,
+      getCopyableValue: () => jsonDecode(data),
     ),
   );
 }
@@ -621,4 +639,8 @@ TreeViewNode<JsonTreeData> _createClosingBracketNode(
   String bracket,
 ) {
   return TreeViewNode(BracketTreeData(lineNumber: lineNumber, value: bracket));
+}
+
+String _getBeautifiedEncodedValue(Object data) {
+  return JsonEncoder.withIndent('\t').convert(data);
 }

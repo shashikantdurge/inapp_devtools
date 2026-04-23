@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 import 'json_tree_data.dart';
 import 'json_tree_theme.dart';
@@ -43,6 +45,7 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   late Size _textSize;
   late double _lineNumberWidth;
   late double rowHeight;
+  TreeViewNode<JsonTreeData>? _selectedNode;
 
   set textSize(Size value) {
     _textSize = value;
@@ -157,7 +160,206 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
     return TreeRow(
       extent: FixedSpanExtent(rowHeight),
       padding: const SpanPadding(),
+      backgroundDecoration: SpanDecoration(
+        color: isSelected(node)
+            ? _postmanSelectedRowColor()
+            : Colors.transparent,
+      ),
+      recognizerFactories: <Type, GestureRecognizerFactory>{
+        LongPressGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+              () => LongPressGestureRecognizer(
+                duration: const Duration(milliseconds: 300),
+              ),
+              (LongPressGestureRecognizer instance) {
+                instance.onLongPressStart = (details) =>
+                    _showJsonNodeContextMenu(node, details.globalPosition);
+              },
+            ),
+      },
     );
+  }
+
+  RelativeRect _getMenuPositionForNode(
+    TreeViewNode<JsonTreeData> node,
+    BoxConstraints constraints,
+    Offset? globalTapPosition,
+  ) {
+    final navigator = Navigator.of(context);
+    final overlayObject = navigator.overlay?.context.findRenderObject();
+    final treeObject = context.findRenderObject();
+
+    if (overlayObject is! RenderBox || treeObject is! RenderBox) {
+      return RelativeRect.fromSize(Rect.zero, constraints.biggest);
+    }
+
+    final activeIndex = treeViewController.getActiveIndexFor(node) ?? 0;
+    final rowTop = rowHeight * activeIndex;
+
+    // Anchor the menu to the clicked row rect in overlay coordinates.
+    final anchorRect = Rect.fromLTWH(
+      globalTapPosition?.dx ??
+          treeObject.localToGlobal(Offset.zero, ancestor: overlayObject).dx,
+      treeObject.localToGlobal(Offset(0, rowTop), ancestor: overlayObject).dy -
+          verticalScrollController.offset,
+      treeObject.size.width,
+      rowHeight,
+    );
+
+    return RelativeRect.fromRect(anchorRect, Offset.zero & overlayObject.size);
+  }
+
+  /// Postman-inspired context menu.
+  Future<void> _showJsonNodeContextMenu(
+    TreeViewNode<JsonTreeData> node,
+    Offset positionRelativeToGlobal,
+  ) async {
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+
+    // Postman-like surfaces: dark charcoal panel / clean light card.
+    final menuBg = isDark ? const Color(0xFF2B2B2B) : const Color(0xFFFFFFFF);
+    final borderColor = isDark
+        ? const Color(0xFF3F3F3F)
+        : const Color(0xFFE2E2E2);
+    final textColor = isDark
+        ? const Color(0xFFE6E6E6)
+        : const Color(0xFF242424);
+    final itemStyle = TextStyle(
+      color: textColor,
+      fontSize: 13,
+      fontWeight: FontWeight.w400,
+      letterSpacing: 0.1,
+    );
+
+    final selectedNode = switch (node.content) {
+      BracketTreeData() => node.parent!,
+      _ => node,
+    };
+    setState(() {
+      _selectedNode = selectedNode;
+    });
+
+    final optionItems = [
+      PopupMenuItem<String>(
+        value: 'copy_value',
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Text('Copy Value', style: itemStyle),
+      ),
+      if (selectedNode.content.key != null) ...[
+        PopupMenuItem<String>(
+          value: 'copy_name',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text('Copy Name', style: itemStyle),
+        ),
+        PopupMenuItem<String>(
+          value: 'copy_property_path',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text('Copy property path', style: itemStyle),
+        ),
+      ],
+      if (selectedNode.content is StringPrimitiveTreeData) ...[
+        PopupMenuItem<String>(
+          value: 'copy_string_contents',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text('Copy string contents', style: itemStyle),
+        ),
+        PopupMenuItem<String>(
+          value: 'copy_string_as_json_literal',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text('Copy string as JSON literal', style: itemStyle),
+        ),
+      ],
+    ];
+
+    final selectedOption = await showMenu<String>(
+      context: context,
+      positionBuilder: (_, constraints) =>
+          _getMenuPositionForNode(node, constraints, positionRelativeToGlobal),
+      color: menuBg,
+      elevation: 12,
+      clipBehavior: Clip.hardEdge,
+      shadowColor: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: BorderSide(color: borderColor),
+      ),
+      menuPadding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 168),
+      items: optionItems,
+    );
+    setState(() {
+      _selectedNode = null;
+    });
+    if (selectedOption != null) {
+      _performNodeAction(selectedOption, selectedNode);
+    }
+  }
+
+  void _performNodeAction(String action, TreeViewNode<JsonTreeData> node) {
+    switch (action) {
+      case 'copy_name':
+        assert(
+          node.content.key != null,
+          'Key should not be null, if you see this, please report an issue to the developer',
+        );
+        Clipboard.setData(ClipboardData(text: node.content.key!));
+        break;
+      case 'copy_value':
+      case 'copy_string_contents':
+        assert(
+          node.content.getCopyableValue != null,
+          'Copyable value should not be null, if you see this, please report an issue to the developer',
+        );
+        Clipboard.setData(
+          ClipboardData(text: node.content.getCopyableValue!.call()!),
+        );
+        break;
+      case 'copy_property_path':
+        final path = _getPropertyPath(node);
+        assert(
+          path != null,
+          'Property path should not be null, if you see this, please report an issue to the developer',
+        );
+        Clipboard.setData(ClipboardData(text: path!));
+        break;
+      case 'copy_string_as_json_literal':
+        assert(
+          node.content is StringPrimitiveTreeData,
+          'Node content should be a StringPrimitiveTreeData, if you see this, please report an issue to the developer',
+        );
+        final stringNode = node.content as StringPrimitiveTreeData;
+        Clipboard.setData(ClipboardData(text: stringNode.value));
+        break;
+      default:
+        throw UnimplementedError('Action $action is not implemented');
+    }
+  }
+
+  String? _getPropertyPath(TreeViewNode<JsonTreeData> node) {
+    if (node.content.key == null) return null;
+    final path = <String>[];
+    var currentNode = node;
+    while (currentNode.parent != null) {
+      if (currentNode.parent?.content is MapTreeData) {
+        path.add('[${currentNode.content.key!}]');
+      } else {
+        path.add(currentNode.content.key!);
+      }
+      currentNode = currentNode.parent!;
+    }
+    return path.reversed.join();
+  }
+
+  Color _postmanSelectedRowColor() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Postman-like active row highlight: subtle blue tint in both themes.
+    return isDark ? const Color(0x334A90E2) : const Color(0x1F4A90E2);
   }
 
   Color _getValueColor(PrimitiveType primitiveType) {
@@ -172,6 +374,11 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
   Widget _buildKeyText(String key, bool isListItem) {
     final color = isListItem ? _jsonTheme.listIndexColor : _jsonTheme.keyColor;
     return Text(key, style: TextStyle(color: color));
+  }
+
+  bool isSelected(TreeViewNode<JsonTreeData>? node) {
+    if (_selectedNode == null || node == null) return false;
+    return _selectedNode == node || isSelected(node.parent);
   }
 
   Widget _buildTreeNode<T extends JsonTreeData>(
@@ -195,7 +402,6 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
           const VerticalDivider(width: 1, thickness: 0.5),
           Padding(padding: EdgeInsets.only(left: indentationWidth)),
         ],
-        //  ..._buildIndentationDividers(depth),
         _buildNodeContent(node),
       ],
     );
@@ -386,5 +592,12 @@ class _JsonTreeWidgetState extends State<JsonTreeWidget> {
 
   List<Widget> _buildClosingBracket(BracketTreeData node) {
     return [Text(node.value, style: TextStyle(color: _jsonTheme.bracketColor))];
+  }
+
+  @override
+  void dispose() {
+    horizontalScrollController.dispose();
+    verticalScrollController.dispose();
+    super.dispose();
   }
 }

@@ -14,6 +14,9 @@ const _postmanSuccess = Color(0xFF4CAF50);
 const _postmanBorder = Color(0xFF404040);
 
 void main() {
+  FlutterError.onError = (details) {
+    print('FlutterError: ${details.exceptionAsString()}');
+  };
   runApp(const MyApp());
 }
 

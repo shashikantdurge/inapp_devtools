@@ -13,6 +13,17 @@ class MyApp extends StatelessWidget {
     final json = {'hey4': 0.0005};
     //High depth json
     final highDepthJson = {
+      //String valuewith special characters
+      'string_hey': 'hello\nworld',
+      'string_hey2': 'hello\tworld',
+      'string_hey3': 'hello\bworld',
+      'string_hey4': 'hello\fworld',
+      'string_hey5': 'hello\rworld',
+      'string_hey6': 'hello\nworld',
+      'string_hey7': 'hello\tworld',
+      'string_hey8': 'hello\bworld',
+      //All special characters in one string value
+      'string_hey9': 'hello\nworld\tworld\bworld\fworld\rworld',
       'hey': 0.0005,
       'hey2': 0.0005,
       'hey3': 0.0005,
@@ -48,14 +59,31 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(title: const Text('JSON Tree Example')),
-        body: Center(
-          child: JsonTreeWidget(
-            json: highDepthJson,
-            expanded: true,
-            expandDepth: 2,
+        body: Padding(
+          padding: const EdgeInsets.only(top: 120.0),
+          child: Center(
+            child: JsonTreeWidget(
+              json: highDepthJson,
+              expanded: true,
+              expandDepth: 2,
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+
+// {
+//   "a": {
+//     "b": {
+//       "c": 989,
+//       "d": [
+//         {
+//           "e": "f"
+//         }
+//       ]
+//     }
+//   }
+// }
