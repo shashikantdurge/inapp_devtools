@@ -85,16 +85,22 @@ class InAppDevTools extends StatefulWidget {
   /// DevTools controller from the nearest [InAppDevTools] ancestor.
   static InAppDevToolsController of(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<_InAppDevToolsScope>()!
+        .dependOnInheritedWidgetOfExactType<_InAppDevToolsControllerProvider>()!
         .notifier!;
   }
 
   /// Current [InAppDevToolsPanelWindowMode] from the nearest [InAppDevTools].
   static InAppDevToolsPanelWindowMode panelModeOf(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<_InAppDevToolsScope>()!
+        .dependOnInheritedWidgetOfExactType<_InAppDevToolsControllerProvider>()!
         .notifier!
         .panelMode;
+  }
+
+  static ToolStateNotifier toolStateNotifier(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_ToolStateProvider>()!
+        .notifier!;
   }
 
   static void ensureInitialized() {
@@ -109,6 +115,7 @@ class InAppDevTools extends StatefulWidget {
 
 class _InAppDevToolsState extends State<InAppDevTools> {
   late final InAppDevToolsController _controller = InAppDevToolsController();
+  late final ToolStateNotifier _toolsState = ToolStateNotifier();
 
   @override
   void initState() {
@@ -177,25 +184,29 @@ class _InAppDevToolsState extends State<InAppDevTools> {
       child: Builder(
         builder: (context) {
           final devPanel = SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return _InAppDevToolsScope(
-                  notifier: _controller,
-                  child: ListenableBuilder(
-                    listenable: _controller,
-                    builder: (context, child) {
-                      return _InAppDevToolsDraggablePanel(
-                        maxSize: constraints.biggest,
-                        panelMode: _controller.panelMode,
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: _buildPanelContent(context),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+            child: _ToolStateProvider(
+              notifier: _toolsState,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return _InAppDevToolsControllerProvider(
+                    notifier: _controller,
+                    child: ListenableBuilder(
+                      listenable: _controller,
+                      builder: (context, child) {
+                        return _InAppDevToolsDraggablePanel(
+                          maxSize: constraints.biggest,
+                          panelMode: _controller.panelMode,
+                          child: MaterialApp(
+                            debugShowCheckedModeBanner: false,
+                            home: _buildPanelContent(context),
+                            theme: getDakTheme(),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
           );
           return Stack(
@@ -405,8 +416,12 @@ class _InAppDevToolsDraggablePanelState
 
 // --- Inherited scope + controller -------------------------------------------
 
-class _InAppDevToolsScope extends InheritedNotifier<InAppDevToolsController> {
-  const _InAppDevToolsScope({required super.notifier, required super.child});
+class _InAppDevToolsControllerProvider
+    extends InheritedNotifier<InAppDevToolsController> {
+  const _InAppDevToolsControllerProvider({
+    required super.notifier,
+    required super.child,
+  });
 
   @override
   bool updateShouldNotify(
@@ -463,5 +478,86 @@ class InAppDevToolsController extends ChangeNotifier {
       case InAppDevToolsPanelWindowMode.minimized:
         break;
     }
+  }
+}
+
+class _ToolStateProvider extends InheritedNotifier<ToolStateNotifier> {
+  const _ToolStateProvider({required super.notifier, required super.child});
+
+  @override
+  bool updateShouldNotify(InheritedNotifier<Listenable> oldWidget) {
+    return oldWidget.notifier != notifier;
+  }
+}
+
+class ToolStateNotifier extends ChangeNotifier {
+  final Map<Type, Object?> _state = {};
+
+  bool has<T>() {
+    return _state.containsKey(T);
+  }
+
+  T? get<T>() {
+    return _state[T] as T?;
+  }
+
+  void set<T>(T? value, {bool notify = true}) {
+    assert(
+      (T != Null && value == null) || value != null,
+      'T should be provided when value is null',
+    );
+    _state[T] = value;
+    if (notify) {
+      notifyListeners();
+    }
+  }
+}
+
+class ToolStateListenableBuilder<T> extends StatefulWidget {
+  const ToolStateListenableBuilder({
+    super.key,
+    required this.builder,
+    this.initialValue,
+  });
+  final Widget Function(BuildContext context, T? value) builder;
+  final T? initialValue;
+
+  @override
+  State<ToolStateListenableBuilder> createState() =>
+      _ToolStateListenableBuilderState<T>();
+}
+
+class _ToolStateListenableBuilderState<T>
+    extends State<ToolStateListenableBuilder<T>> {
+  T? _value;
+  late ToolStateNotifier _toolsStateProvider;
+  void _onToolStateChanged() {
+    setState(() {
+      _value = InAppDevTools.toolStateNotifier(context).get<T>();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    _toolsStateProvider = InAppDevTools.toolStateNotifier(context);
+    if (_toolsStateProvider.has<T>()) {
+      _value = _toolsStateProvider.get<T>();
+    } else {
+      _value = widget.initialValue;
+    }
+    _toolsStateProvider.removeListener(_onToolStateChanged);
+    _toolsStateProvider.addListener(_onToolStateChanged);
+    super.didChangeDependencies();
+  }
+
+  @override
+  void dispose() {
+    _toolsStateProvider.removeListener(_onToolStateChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(context, _value);
   }
 }

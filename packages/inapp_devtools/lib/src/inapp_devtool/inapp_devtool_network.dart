@@ -19,11 +19,22 @@ class InAppDevtoolNetwork extends StatefulWidget with InAppDevToolsItem {
 
 class _InAppDevtoolNetworkState extends State<InAppDevtoolNetwork> {
   final HeroController _heroController = HeroController();
+  late ToolStateNotifier _toolStateNotifier;
   HttpProfileData? _selectedHttpProfileData;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _toolStateNotifier = InAppDevTools.toolStateNotifier(context);
+    final networkState =
+        _toolStateNotifier.get<_InAppDevtoolNetworkState>() ?? this;
+    _selectedHttpProfileData = networkState._selectedHttpProfileData;
+  }
 
   @override
   void dispose() {
     _heroController.dispose();
+    _toolStateNotifier.set(this, notify: false);
     super.dispose();
   }
 
@@ -42,12 +53,16 @@ class _InAppDevtoolNetworkState extends State<InAppDevtoolNetwork> {
                   return ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     separatorBuilder: (context, index) =>
-                        Divider(color: Colors.grey[850]),
+                        Divider(color: Colors.grey[850], height: 1),
                     itemCount: snapshot.data?.length ?? 0,
                     itemBuilder: (context, index) {
                       final data = snapshot.data![index];
                       return _HttpProfileHeaderWidget(
                         httpProfileData: data,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 16,
+                        ),
                         onTap: () {
                           setState(() {
                             _selectedHttpProfileData = data;
@@ -196,154 +211,207 @@ class _HttpProfileBodyWidget extends StatefulWidget {
   State<_HttpProfileBodyWidget> createState() => __HttpProfileBodyWidgetState();
 }
 
+class _Tab {
+  final Widget tabView;
+  final Tab tab;
+  final String name;
+
+  const _Tab({required this.tabView, required this.tab, required this.name});
+}
+
 class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+    with TickerProviderStateMixin {
+  late ToolStateNotifier _toolStateNotifier;
+  late TabController _tabController;
+  late List<_Tab> tabViews;
+  static const tabHeight = 32.0;
+
+  String get tabName => tabViews[_tabController.index].name;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _initializeTabViews();
+    _tabController = TabController(
+      length: tabViews.length,
+      vsync: this,
+      initialIndex: 0,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _toolStateNotifier = InAppDevTools.toolStateNotifier(context);
+    final oldState = _toolStateNotifier.get<__HttpProfileBodyWidgetState>();
+    if (oldState != null) {
+      final index = tabViews.indexWhere((tab) => tab.name == oldState.tabName);
+      if (index != -1) {
+        _tabController.index = index;
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _HttpProfileBodyWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _initializeTabViews();
+    if (_tabController.length != tabViews.length) {
+      _tabController.dispose();
+      _tabController = TabController(
+        length: tabViews.length,
+        vsync: this,
+        animationDuration: _tabController.animationDuration,
+        initialIndex: _tabController.index,
+      );
+    }
+  }
+
+  void _initializeTabViews() {
+    tabViews = [
+      //Overview tab
+      _Tab(
+        tab: Tab(text: 'Overview', height: tabHeight),
+        name: 'Overview',
+        tabView: _TabViewOverview(httpProfileData: widget.httpProfileData),
+      ),
+
+      //Headers tab
+      _Tab(
+        tab: Tab(text: 'Headers', height: tabHeight),
+        name: 'Headers',
+        tabView: _TabViewHeaders(httpProfileData: widget.httpProfileData),
+      ),
+
+      //Request tab
+      if (widget.httpProfileData.request.requestBody.isNotEmpty)
+        _Tab(
+          tab: Tab(text: 'Request', height: tabHeight),
+          name: 'Request',
+          tabView: _TabViewRequest(httpProfileData: widget.httpProfileData),
+        ),
+
+      //Response tab
+      if (widget.httpProfileData.response.responseBody.isNotEmpty)
+        _Tab(
+          tab: Tab(text: 'Response', height: tabHeight),
+          name: 'Response',
+          tabView: _TabViewResponse(httpProfileData: widget.httpProfileData),
+        ),
+    ];
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _toolStateNotifier.set(this, notify: false);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = InAppDevToolsTheme.of(context);
-    const tabHeight = 32.0;
-    List<(Tab, Widget)> tabViews = [
-      //Overview tab
-      (
-        Tab(text: 'Overview', height: tabHeight),
-        _TabViewOverview(httpProfileData: widget.httpProfileData),
-      ),
 
-      //Headers tab
-      (
-        Tab(text: 'Headers', height: tabHeight),
-        _TabViewHeaders(httpProfileData: widget.httpProfileData),
-      ),
-
-      //Request tab
-      if (widget.httpProfileData.request.requestBody.isNotEmpty)
-        (
-          Tab(text: 'Request', height: tabHeight),
-          _TabViewRequest(httpProfileData: widget.httpProfileData),
-        ),
-
-      //Response tab
-      if (widget.httpProfileData.response.responseBody.isNotEmpty)
-        (
-          Tab(text: 'Response', height: tabHeight),
-          _TabViewResponse(httpProfileData: widget.httpProfileData),
-        ),
-    ];
-
-    return DefaultTabController(
-      length: tabViews.length,
-      child: Column(
-        children: [
-          ColoredBox(
-            color: t.appBarBackgroundColor.withValues(alpha: 0.5),
-            child: Column(
-              children: [
-                _HttpProfileHeaderWidget(
-                  httpProfileData: widget.httpProfileData,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  onTap: widget.popCallback,
-                ),
-                Row(
-                  children: [
-                    //Tab Bar
-                    Expanded(
-                      child: TabBar(
-                        isScrollable: true,
-                        tabAlignment: TabAlignment.start,
-                        padding: const EdgeInsets.only(left: 8, right: 8),
-                        labelPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 0,
-                        ),
-                        indicatorSize: TabBarIndicatorSize.label,
-                        indicator: UnderlineTabIndicator(
-                          borderSide: BorderSide(
-                            color: t.appBarMenuUnderlineColor,
-                            width: 2,
-                          ),
-                          insets: EdgeInsets.zero,
-                        ),
-                        dividerColor: Colors.transparent,
-                        dividerHeight: 1,
-                        labelColor: const Color(0xFFE0E0E0),
-                        unselectedLabelColor: const Color(0xFF9E9E9E),
-                        labelStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overlayColor: WidgetStateProperty.resolveWith((states) {
-                          if (states.contains(WidgetState.pressed) ||
-                              states.contains(WidgetState.hovered)) {
-                            return t.appBarToolSelectorBackgroundColor
-                                .withValues(alpha: 0.4);
-                          }
-                          return null;
-                        }),
-                        tabs: tabViews.map((tab) => tab.$1).toList(),
+    return Column(
+      children: [
+        ColoredBox(
+          color: t.appBarBackgroundColor.withValues(alpha: 0.5),
+          child: Column(
+            children: [
+              _HttpProfileHeaderWidget(
+                httpProfileData: widget.httpProfileData,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                onTap: widget.popCallback,
+              ),
+              Row(
+                children: [
+                  //Tab Bar
+                  Expanded(
+                    child: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      padding: const EdgeInsets.only(left: 8, right: 8),
+                      labelPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 0,
                       ),
+                      indicatorSize: TabBarIndicatorSize.label,
+                      indicator: UnderlineTabIndicator(
+                        borderSide: BorderSide(
+                          color: t.appBarMenuUnderlineColor,
+                          width: 2,
+                        ),
+                        insets: EdgeInsets.zero,
+                      ),
+                      dividerColor: Colors.transparent,
+                      dividerHeight: 1,
+                      labelColor: const Color(0xFFE0E0E0),
+                      unselectedLabelColor: const Color(0xFF9E9E9E),
+                      labelStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overlayColor: WidgetStateProperty.resolveWith((states) {
+                        if (states.contains(WidgetState.pressed) ||
+                            states.contains(WidgetState.hovered)) {
+                          return t.appBarToolSelectorBackgroundColor.withValues(
+                            alpha: 0.4,
+                          );
+                        }
+                        return null;
+                      }),
+                      tabs: tabViews.map((tab) => tab.tab).toList(),
                     ),
+                  ),
 
-                    //Copy button
-                    Builder(
-                      builder: (context) {
-                        return ListenableBuilder(
-                          listenable: DefaultTabController.of(context),
-                          builder: (BuildContext context, Widget? child) {
-                            final index = DefaultTabController.of(
-                              context,
-                            ).index;
-                            final widget = tabViews[index].$2;
-                            return IconButton(
-                              onPressed: widget is _CopyableWidget
-                                  ? () {
-                                      if (widget.getWidgetContent()
-                                          case String content) {
-                                        Clipboard.setData(
-                                          ClipboardData(text: content),
-                                        );
-                                      }
+                  //Copy button
+                  Builder(
+                    builder: (context) {
+                      return ListenableBuilder(
+                        listenable: _tabController,
+                        builder: (BuildContext context, Widget? child) {
+                          final index = _tabController.index;
+                          final widget = tabViews[index].tabView;
+                          return IconButton(
+                            onPressed: widget is _CopyableWidget
+                                ? () {
+                                    if (widget.getWidgetContent()
+                                        case String content) {
+                                      Clipboard.setData(
+                                        ClipboardData(text: content),
+                                      );
                                     }
-                                  : null,
-                              icon: Icon(Icons.copy),
-                            );
-                          },
-                        );
-                      },
-                    ),
+                                  }
+                                : null,
+                            icon: Icon(Icons.copy),
+                          );
+                        },
+                      );
+                    },
+                  ),
 
-                    //Close button
-                    IconButton(
-                      onPressed: widget.popCallback,
-                      icon: Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  //Close button
+                  IconButton(
+                    onPressed: widget.popCallback,
+                    icon: Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ],
           ),
-          Expanded(
-            child: TabBarView(children: tabViews.map((tab) => tab.$2).toList()),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: tabViews.map((tab) => tab.tabView).toList(),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -499,64 +567,97 @@ class _TabViewHeaders extends StatefulWidget with _CopyableWidget {
 }
 
 class _TabViewHeadersState extends State<_TabViewHeaders> {
+  late ToolStateNotifier toolStateNotifier;
+  bool generalTabExpanded = true;
+  bool responseHeadersTabExpanded = true;
+  bool requestHeadersTabExpanded = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    toolStateNotifier = InAppDevTools.toolStateNotifier(context);
+    final oldState = toolStateNotifier.get<_TabViewHeadersState>();
+    if (oldState != null) {
+      generalTabExpanded = oldState.generalTabExpanded;
+      responseHeadersTabExpanded = oldState.responseHeadersTabExpanded;
+      requestHeadersTabExpanded = oldState.requestHeadersTabExpanded;
+    }
+  }
+
+  @override
+  void dispose() {
+    toolStateNotifier.set(this, notify: false);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      child: SelectionArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExpansionTile(
+            title: Text('General'),
+            initiallyExpanded: generalTabExpanded,
+            onExpansionChanged: (expanded) {
+              setState(() {
+                generalTabExpanded = expanded;
+              });
+            },
+            children: [
+              _KeyValueRowWidget(
+                keyWidget: Text('Method'),
+                valueWidget: Text(widget.httpProfileData.method.toUpperCase()),
+              ),
+              _KeyValueRowWidget(
+                keyWidget: Text('Request URL'),
+                valueWidget: Text(widget.httpProfileData.uri.toString()),
+              ),
+              _KeyValueRowWidget(
+                keyWidget: Text('Status Code'),
+                valueWidget: Text(widget.httpProfileData.statusCodeWithValue),
+              ),
+            ],
+          ),
+
+          if (widget.httpProfileData.response.headers
+              case Map<String, List<String>> headers)
             ExpansionTile(
-              title: SelectableText('General'),
+              title: Text('Response Headers'),
+              initiallyExpanded: responseHeadersTabExpanded,
+              onExpansionChanged: (expanded) {
+                setState(() {
+                  responseHeadersTabExpanded = expanded;
+                });
+              },
               children: [
-                _KeyValueRowWidget(
-                  keyWidget: SelectableText('Method'),
-                  valueWidget: SelectableText(
-                    widget.httpProfileData.method.toUpperCase(),
+                for (final header in headers.entries)
+                  _KeyValueRowWidget(
+                    keyWidget: Text(header.key),
+                    valueWidget: Text(header.value.join(', ')),
                   ),
-                ),
-                _KeyValueRowWidget(
-                  keyWidget: SelectableText('Request URL'),
-                  valueWidget: SelectableText(
-                    widget.httpProfileData.uri.toString(),
-                  ),
-                ),
-                _KeyValueRowWidget(
-                  keyWidget: SelectableText('Status Code'),
-                  valueWidget: SelectableText(
-                    widget.httpProfileData.statusCodeWithValue,
-                  ),
-                ),
               ],
             ),
 
-            if (widget.httpProfileData.response.headers
-                case Map<String, List<String>> headers)
-              ExpansionTile(
-                title: Text('Response Headers'),
-                children: [
-                  for (final header in headers.entries)
-                    _KeyValueRowWidget(
-                      keyWidget: Text(header.key),
-                      valueWidget: Text(header.value.join(', ')),
-                    ),
-                ],
-              ),
-
-            if (widget.httpProfileData.request.headers
-                case Map<String, List<String>> headers)
-              ExpansionTile(
-                title: Text('Request Headers'),
-                children: [
-                  for (final header in headers.entries)
-                    _KeyValueRowWidget(
-                      keyWidget: Text(header.key),
-                      valueWidget: Text(header.value.join(', ')),
-                    ),
-                ],
-              ),
-          ],
-        ),
+          if (widget.httpProfileData.request.headers
+              case Map<String, List<String>> headers)
+            ExpansionTile(
+              title: Text('Request Headers'),
+              initiallyExpanded: requestHeadersTabExpanded,
+              onExpansionChanged: (expanded) {
+                setState(() {
+                  requestHeadersTabExpanded = expanded;
+                });
+              },
+              children: [
+                for (final header in headers.entries)
+                  _KeyValueRowWidget(
+                    keyWidget: Text(header.key),
+                    valueWidget: Text(header.value.join(', ')),
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -697,7 +798,7 @@ class _DataDisplayWidgetState extends State<_DataDisplayWidget> {
           },
         );
       }
-      rethrow;
+      return buildScrollableText('Binary data:\n${widget.data}');
     } catch (e) {
       return buildScrollableText('Binary data:\n${widget.data}');
     }
