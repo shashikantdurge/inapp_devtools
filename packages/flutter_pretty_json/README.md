@@ -20,10 +20,11 @@ PrettyJson(
 )
 ```
 Pretty JSON
-![](https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_pretty_json/assets/pretty_json_view.jpg)
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_pretty_json/assets/pretty_json_view.jpg" height="200" />
 
 Contextual Menu Options
-![](https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_pretty_json/assets/pretty_json_contextual_menu.jpg)
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_pretty_json/assets/pretty_json_contextual_menu.jpg" height="200" />
+
 
 ## Example app
 
