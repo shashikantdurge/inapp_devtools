@@ -157,7 +157,7 @@ class _PrettyJsonState extends State<PrettyJson> {
       padding: const SpanPadding(),
       backgroundDecoration: SpanDecoration(
         color: isSelected(node)
-            ? _postmanSelectedRowColor()
+            ? _jsonTheme.selectedRowColor
             : Colors.transparent,
       ),
       recognizerFactories: <Type, GestureRecognizerFactory>{
@@ -191,12 +191,13 @@ class _PrettyJsonState extends State<PrettyJson> {
     final activeIndex = treeViewController.getActiveIndexFor(node) ?? 0;
     final rowTop = rowHeight * activeIndex;
 
-    // Anchor the menu to the clicked row rect in overlay coordinates.
+    // Anchor the menu to the bottom of the clicked row rect in overlay coordinates.
     final anchorRect = Rect.fromLTWH(
       globalTapPosition?.dx ??
           treeObject.localToGlobal(Offset.zero, ancestor: overlayObject).dx,
       treeObject.localToGlobal(Offset(0, rowTop), ancestor: overlayObject).dy -
-          verticalScrollController.offset,
+          verticalScrollController.offset +
+          rowHeight,
       treeObject.size.width,
       rowHeight,
     );
@@ -209,17 +210,11 @@ class _PrettyJsonState extends State<PrettyJson> {
     TreeViewNode<JsonTreeData> node,
     Offset positionRelativeToGlobal,
   ) async {
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
-
-    // Postman-like surfaces: dark charcoal panel / clean light card.
-    final menuBg = isDark ? const Color(0xFF2B2B2B) : const Color(0xFFFFFFFF);
-    final borderColor = isDark
-        ? const Color(0xFF3F3F3F)
-        : const Color(0xFFE2E2E2);
-    final textColor = isDark
-        ? const Color(0xFFE6E6E6)
-        : const Color(0xFF242424);
+    final theme = Theme.of(context);
+    final menuBg = theme.colorScheme.surface;
+    final borderColor = theme.dividerColor;
+    final textColor =
+        theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface;
     final itemStyle = TextStyle(
       color: textColor,
       fontSize: 13,
@@ -279,7 +274,7 @@ class _PrettyJsonState extends State<PrettyJson> {
       color: menuBg,
       elevation: 12,
       clipBehavior: Clip.hardEdge,
-      shadowColor: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
+      shadowColor: theme.shadowColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(6),
         side: BorderSide(color: borderColor),
@@ -349,12 +344,6 @@ class _PrettyJsonState extends State<PrettyJson> {
       currentNode = currentNode.parent!;
     }
     return path.reversed.join();
-  }
-
-  Color _postmanSelectedRowColor() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Postman-like active row highlight: subtle blue tint in both themes.
-    return isDark ? const Color(0x334A90E2) : const Color(0x1F4A90E2);
   }
 
   Color _getValueColor(PrimitiveType primitiveType) {
