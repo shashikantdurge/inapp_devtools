@@ -1,9 +1,7 @@
 name: flutter_pretty_json
 description: "A Flutter widget for rendering JSON as an expandable tree with syntax highlighting."
 version: 0.1.0
-publish_to: https://pub.dev/
 repository: https://github.com/shashikantdurge/inapp_devtools/tree/master/packages/flutter_pretty_json
-
 
 environment:
   sdk: ^3.10.3
