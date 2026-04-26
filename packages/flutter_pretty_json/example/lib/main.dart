@@ -13,7 +13,7 @@ class JsonViewerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Pretty JSON Demo',
-      theme: ThemeData.light(),
+      theme: ThemeData.dark(),
       home: const JsonViewerExample(),
     );
   }
