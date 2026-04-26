@@ -20,6 +20,7 @@ class PrettyJsonTheme extends ThemeExtension<PrettyJsonTheme> {
     required this.specialCharColor,
     required this.collapsedValueTextColor,
     required this.collapsedValueBackgroundColor,
+    required this.selectedRowColor,
   });
 
   final Color keyColor;
@@ -39,6 +40,7 @@ class PrettyJsonTheme extends ThemeExtension<PrettyJsonTheme> {
   final Color specialCharColor;
   final Color collapsedValueTextColor;
   final Color collapsedValueBackgroundColor;
+  final Color selectedRowColor;
 
   /// Light theme colors (Postman-inspired)
   factory PrettyJsonTheme.light() => const PrettyJsonTheme(
@@ -61,6 +63,7 @@ class PrettyJsonTheme extends ThemeExtension<PrettyJsonTheme> {
     collapsedValueBackgroundColor: Color(
       0x335F6368,
     ), // Gray at 20% for collapsed background
+    selectedRowColor: Color(0x1F4A90E2), // Subtle blue tint for selected row
   );
 
   /// Dark theme colors (Postman-inspired)
@@ -88,6 +91,7 @@ class PrettyJsonTheme extends ThemeExtension<PrettyJsonTheme> {
     collapsedValueBackgroundColor: Color(
       0x33BDC1C6,
     ), // Light gray at 20% for collapsed background
+    selectedRowColor: Color(0x334A90E2), // Subtle blue tint for selected row
   );
 
   @override
@@ -109,6 +113,7 @@ class PrettyJsonTheme extends ThemeExtension<PrettyJsonTheme> {
     Color? specialCharColor,
     Color? collapsedValueTextColor,
     Color? collapsedValueBackgroundColor,
+    Color? selectedRowColor,
   }) {
     return PrettyJsonTheme(
       keyColor: keyColor ?? this.keyColor,
@@ -132,6 +137,7 @@ class PrettyJsonTheme extends ThemeExtension<PrettyJsonTheme> {
           collapsedValueTextColor ?? this.collapsedValueTextColor,
       collapsedValueBackgroundColor:
           collapsedValueBackgroundColor ?? this.collapsedValueBackgroundColor,
+      selectedRowColor: selectedRowColor ?? this.selectedRowColor,
     );
   }
 
@@ -182,6 +188,11 @@ class PrettyJsonTheme extends ThemeExtension<PrettyJsonTheme> {
       collapsedValueBackgroundColor: Color.lerp(
         collapsedValueBackgroundColor,
         other.collapsedValueBackgroundColor,
+        t,
+      )!,
+      selectedRowColor: Color.lerp(
+        selectedRowColor,
+        other.selectedRowColor,
         t,
       )!,
     );

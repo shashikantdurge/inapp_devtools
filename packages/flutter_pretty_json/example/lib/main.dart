@@ -40,7 +40,7 @@ class _JsonViewerExampleState extends State<JsonViewerExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('JSON Tree Example')),
+      appBar: AppBar(title: const Text('Pretty JSON Example')),
       body: FutureBuilder<String>(
         future: _future,
         builder: (context, snapshot) {
