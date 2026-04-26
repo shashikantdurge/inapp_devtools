@@ -23,7 +23,6 @@
         "http",
         "intl",
         "rxdart",
-        "two_dimensional_scrollables",
         "uuid"
       ],
       "devDependencies": [
@@ -108,13 +107,6 @@
         "flutter",
         "http",
         "path_provider"
-      ]
-    },
-    {
-      "name": "two_dimensional_scrollables",
-      "version": "0.3.8",
-      "dependencies": [
-        "flutter"
       ]
     },
     {

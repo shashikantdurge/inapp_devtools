@@ -783,12 +783,7 @@ class _DataDisplayWidgetState extends State<_DataDisplayWidget> {
 
     try {
       final utf8DecodedBody = utf8.decode(widget.data);
-      try {
-        final json = jsonDecode(utf8DecodedBody);
-        return JsonTreeWidget(json: json, expandDepth: 1);
-      } catch (e) {
-        return buildScrollableText(utf8DecodedBody);
-      }
+      return buildScrollableText(utf8DecodedBody);
     } on FormatException {
       if (widget.contentType?.contains('image/') ?? false) {
         return Image.memory(

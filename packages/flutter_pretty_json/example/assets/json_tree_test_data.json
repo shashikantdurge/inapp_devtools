@@ -1,0 +1,115 @@
+{
+  "stringValue": "Hello, JSON tree!",
+  "emptyString": "",
+  "integerValue": 42,
+  "negativeInteger": -7,
+  "doubleValue": 3.14159,
+  "negativeDouble": -0.125,
+  "zeroValue": 0,
+  "bigNumber": 1234567890123456789,
+  "booleanTrue": true,
+  "booleanFalse": false,
+  "nullValue": null,
+  "simpleList": [
+    1,
+    2,
+    3,
+    "four",
+    false,
+    null
+  ],
+  "nestedList": [
+    [
+      1,
+      2
+    ],
+    [
+      {
+        "id": 1,
+        "label": "A"
+      },
+      {
+        "id": 2,
+        "label": "B"
+      }
+    ],
+    []
+  ],
+  "simpleMap": {
+    "name": "John Doe",
+    "age": 30,
+    "isActive": true,
+    "score": 98.6,
+    "nickname": null
+  },
+  "nestedMap": {
+    "level1": {
+      "level2": {
+        "level3": {
+          "value": "deep node",
+          "enabled": true
+        }
+      }
+    }
+  },
+  "listOfMaps": [
+    {
+      "id": 101,
+      "title": "First item",
+      "tags": [
+        "alpha",
+        "beta"
+      ]
+    },
+    {
+      "id": 102,
+      "title": "Second item",
+      "tags": []
+    }
+  ],
+  "mapOfLists": {
+    "numbers": [
+      10,
+      20,
+      30
+    ],
+    "flags": [
+      true,
+      false,
+      true
+    ],
+    "labels": [
+      "x",
+      "y",
+      "z"
+    ]
+  },
+  "mixedComplexNode": {
+    "items": [
+      {
+        "type": "user",
+        "data": {
+          "id": "u_001",
+          "roles": [
+            "admin",
+            "editor"
+          ],
+          "verified": true
+        }
+      },
+      {
+        "type": "config",
+        "data": {
+          "retryCount": 3,
+          "timeoutSeconds": 12.5,
+          "features": {
+            "darkMode": false,
+            "newDashboard": true
+          }
+        }
+      }
+    ]
+  },
+  "emptyObject": {},
+  "emptyArray": []
+}
