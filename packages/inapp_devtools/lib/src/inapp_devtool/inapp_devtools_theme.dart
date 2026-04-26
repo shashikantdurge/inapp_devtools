@@ -79,10 +79,7 @@ class InAppDevToolsThemeData {
     ),
     appBarIconColor: Color(0xFFBDBDBD),
     pickerBottomBorderColor: Color(0xFF404040),
-    pickerItemLabelStyle: TextStyle(
-      color: Color(0xFFE0E0E0),
-      fontSize: 14,
-    ),
+    pickerItemLabelStyle: TextStyle(color: Color(0xFFE0E0E0), fontSize: 14),
     pickerIconColor: Color(0xFF9E9E9E),
     pickerListDividerColor: Color(0xFF404040),
     panelBorderColor: Color(0xFF404040),
@@ -111,7 +108,8 @@ class InAppDevToolsThemeData {
           scaffoldBackgroundColor ?? this.scaffoldBackgroundColor,
       appBarBackgroundColor:
           appBarBackgroundColor ?? this.appBarBackgroundColor,
-      appBarToolSelectorBackgroundColor: appBarToolSelectorBackgroundColor ??
+      appBarToolSelectorBackgroundColor:
+          appBarToolSelectorBackgroundColor ??
           this.appBarToolSelectorBackgroundColor,
       appBarToolSelectorBorderColor:
           appBarToolSelectorBorderColor ?? this.appBarToolSelectorBorderColor,
@@ -128,7 +126,8 @@ class InAppDevToolsThemeData {
       panelBorderColor: panelBorderColor ?? this.panelBorderColor,
       minimizedFabBackgroundColor:
           minimizedFabBackgroundColor ?? this.minimizedFabBackgroundColor,
-      minimizedFabIconColor: minimizedFabIconColor ?? this.minimizedFabIconColor,
+      minimizedFabIconColor:
+          minimizedFabIconColor ?? this.minimizedFabIconColor,
     );
   }
 
@@ -203,4 +202,173 @@ class InAppDevToolsTheme extends InheritedWidget {
   bool updateShouldNotify(InAppDevToolsTheme oldWidget) {
     return data != oldWidget.data;
   }
+}
+
+/// Postman-style dark [ThemeData] for app surfaces (matches [InAppDevToolsThemeData.dark]).
+///
+/// Palette: background `#1E1E1E`, surfaces `#2D2D2D` / `#333333`, accent `#FF6C37`,
+/// borders `#404040`, primary text `#E0E0E0`, secondary text `#9E9E9E`.
+ThemeData getDakTheme() {
+  const scaffoldBackground = Color(0xFF1E1E1E);
+  const surface = Color(0xFF1E1E1E);
+  const surfaceContainer = Color(0xFF333333);
+  const outline = Color(0xFF404040);
+  const postmanOrange = Color(0xFFFF6C37);
+  const onSurface = Color(0xFFE0E0E0);
+  const onSurfaceVariant = Color(0xFF9E9E9E);
+  const iconMuted = Color(0xFFBDBDBD);
+
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: scaffoldBackground,
+    colorScheme: const ColorScheme.dark(
+      primary: postmanOrange,
+      onPrimary: Color(0xFFFFFFFF),
+      primaryContainer: Color(0xFFCC5429),
+      onPrimaryContainer: Color(0xFFFFFFFF),
+      secondary: surfaceContainer,
+      onSecondary: onSurface,
+      surface: surface,
+      onSurface: onSurface,
+      onSurfaceVariant: onSurfaceVariant,
+      outline: outline,
+      outlineVariant: outline,
+      error: Color(0xFFCF6679),
+      onError: Color(0xFF000000),
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: surface,
+      foregroundColor: onSurface,
+      elevation: 0,
+      centerTitle: true,
+      iconTheme: IconThemeData(color: iconMuted),
+      actionsIconTheme: IconThemeData(color: iconMuted),
+    ),
+    cardTheme: CardThemeData(
+      color: surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: outline, width: 1),
+      ),
+    ),
+    dividerTheme: const DividerThemeData(color: outline, thickness: 1),
+    dividerColor: outline,
+    dialogTheme: DialogThemeData(
+      backgroundColor: surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: surfaceContainer,
+      contentTextStyle: const TextStyle(color: onSurface),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: postmanOrange,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: postmanOrange,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: postmanOrange,
+        side: const BorderSide(color: postmanOrange),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: postmanOrange),
+    ),
+    iconTheme: const IconThemeData(color: iconMuted),
+    listTileTheme: const ListTileThemeData(
+      iconColor: iconMuted,
+      textColor: onSurface,
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: surfaceContainer,
+      deleteIconColor: onSurfaceVariant,
+      disabledColor: outline,
+      selectedColor: postmanOrange.withValues(alpha: 0.22),
+      secondarySelectedColor: postmanOrange.withValues(alpha: 0.22),
+      labelStyle: const TextStyle(color: onSurface, fontSize: 13),
+      secondaryLabelStyle: const TextStyle(color: onSurface, fontSize: 13),
+      brightness: Brightness.dark,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: outline),
+      ),
+    ),
+    expansionTileTheme: ExpansionTileThemeData(
+      tilePadding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      childrenPadding: EdgeInsets.only(bottom: 16),
+      iconColor: Colors.white,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: surfaceContainer,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: outline),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: outline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: postmanOrange, width: 2),
+      ),
+      labelStyle: const TextStyle(color: onSurfaceVariant),
+      hintStyle: const TextStyle(color: onSurfaceVariant),
+    ),
+    textTheme: const TextTheme(
+      bodyLarge: TextStyle(color: onSurface, fontSize: 16),
+      bodyMedium: TextStyle(color: onSurface, fontSize: 14),
+      bodySmall: TextStyle(color: onSurfaceVariant, fontSize: 12),
+      titleLarge: TextStyle(
+        color: onSurface,
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
+      ),
+      titleMedium: TextStyle(
+        color: onSurface,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
+      titleSmall: TextStyle(
+        color: onSurface,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      labelLarge: TextStyle(
+        color: onSurface,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: postmanOrange,
+      foregroundColor: Colors.white,
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: postmanOrange,
+    ),
+  );
 }

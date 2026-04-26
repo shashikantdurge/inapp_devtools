@@ -17,11 +17,12 @@
       "name": "inapp_devtools",
       "version": "0.0.1",
       "dependencies": [
+        "collection",
         "flutter",
         "google_fonts",
         "http",
+        "intl",
         "rxdart",
-        "two_dimensional_scrollables",
         "uuid"
       ],
       "devDependencies": [
@@ -90,6 +91,15 @@
       ]
     },
     {
+      "name": "intl",
+      "version": "0.20.2",
+      "dependencies": [
+        "clock",
+        "meta",
+        "path"
+      ]
+    },
+    {
       "name": "google_fonts",
       "version": "8.0.2",
       "dependencies": [
@@ -97,13 +107,6 @@
         "flutter",
         "http",
         "path_provider"
-      ]
-    },
-    {
-      "name": "two_dimensional_scrollables",
-      "version": "0.3.8",
-      "dependencies": [
-        "flutter"
       ]
     },
     {
@@ -128,6 +131,11 @@
         "meta",
         "web"
       ]
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
     },
     {
       "name": "flutter",
@@ -269,11 +277,6 @@
     {
       "name": "conventional_commit",
       "version": "0.6.1+1",
-      "dependencies": []
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
       "dependencies": []
     },
     {

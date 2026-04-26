@@ -5,11 +5,17 @@
 /// descendants to read [InAppDevToolsController] and drive [InAppDevToolsPanelWindowMode].
 library;
 
+import 'dart:io';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:inapp_devtools/src/inapp_devtool/inapp_devtool_network.dart';
+import 'package:inapp_devtools/src/network_tool/http_profiler.dart'
+    show HttpProfiler;
+import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart'
+    show IADNetworkHttpOverrides;
 
 import 'inapp_devtools_theme.dart';
 
@@ -50,7 +56,7 @@ enum InAppDevToolsPanelWindowMode {
 class InAppDevTools extends StatefulWidget {
   InAppDevTools({
     super.key,
-    required this.tools,
+    this.tools = const [InAppDevtoolNetwork()],
     this.initialSelectedToolIndex = 0,
     this.theme,
     this.color,
@@ -79,16 +85,28 @@ class InAppDevTools extends StatefulWidget {
   /// DevTools controller from the nearest [InAppDevTools] ancestor.
   static InAppDevToolsController of(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<_InAppDevToolsScope>()!
+        .dependOnInheritedWidgetOfExactType<_InAppDevToolsControllerProvider>()!
         .notifier!;
   }
 
   /// Current [InAppDevToolsPanelWindowMode] from the nearest [InAppDevTools].
   static InAppDevToolsPanelWindowMode panelModeOf(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<_InAppDevToolsScope>()!
+        .dependOnInheritedWidgetOfExactType<_InAppDevToolsControllerProvider>()!
         .notifier!
         .panelMode;
+  }
+
+  static ToolStateNotifier toolStateNotifier(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_ToolStateProvider>()!
+        .notifier!;
+  }
+
+  static void ensureInitialized() {
+    // Initialize the network tools
+    HttpProfiler.ensureInitialized();
+    HttpOverrides.global = IADNetworkHttpOverrides();
   }
 
   @override
@@ -97,10 +115,12 @@ class InAppDevTools extends StatefulWidget {
 
 class _InAppDevToolsState extends State<InAppDevTools> {
   late final InAppDevToolsController _controller = InAppDevToolsController();
+  late final ToolStateNotifier _toolsState = ToolStateNotifier();
 
   @override
   void initState() {
     super.initState();
+    InAppDevTools.ensureInitialized();
     _controller
       ..setTools(widget.tools)
       ..setSelectedToolIndex(widget.initialSelectedToolIndex);
@@ -164,31 +184,49 @@ class _InAppDevToolsState extends State<InAppDevTools> {
       child: Builder(
         builder: (context) {
           final devPanel = SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return _InAppDevToolsScope(
-                  notifier: _controller,
-                  child: ListenableBuilder(
-                    listenable: _controller,
-                    builder: (context, child) {
-                      return _InAppDevToolsDraggablePanel(
-                        maxSize: constraints.biggest,
-                        panelMode: _controller.panelMode,
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: _buildPanelContent(context),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+            child: _ToolStateProvider(
+              notifier: _toolsState,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return _InAppDevToolsControllerProvider(
+                    notifier: _controller,
+                    child: ListenableBuilder(
+                      listenable: _controller,
+                      builder: (context, child) {
+                        return _InAppDevToolsDraggablePanel(
+                          maxSize: constraints.biggest,
+                          panelMode: _controller.panelMode,
+                          child: MaterialApp(
+                            debugShowCheckedModeBanner: false,
+                            home: _buildPanelContent(context),
+                            theme: getDakTheme(),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
           );
           return Stack(
+            textDirection: TextDirection.ltr,
             children: [
               if (widget.child != null) Positioned.fill(child: widget.child!),
-              devPanel,
+              Theme(
+                data: getDakTheme(),
+                child: Localizations(
+                  locale: Locale('en'),
+                  delegates: [
+                    DefaultMaterialLocalizations.delegate,
+                    DefaultWidgetsLocalizations.delegate,
+                  ],
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: devPanel,
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -251,6 +289,7 @@ class _InAppDevToolsDraggablePanelState
     _left = 100;
     _top = 100;
     _panelSize = widget._sizeByMode[widget.panelMode]!;
+    _clampPosition();
   }
 
   @override
@@ -259,8 +298,6 @@ class _InAppDevToolsDraggablePanelState
     if (widget.maxSize != oldWidget.maxSize ||
         oldWidget.panelMode != widget.panelMode) {
       _panelSize = widget._sizeByMode[widget.panelMode]!;
-    }
-    if (oldWidget.panelMode != widget.panelMode) {
       _positionByMode[oldWidget.panelMode] = Offset(_left, _top);
       _left = _positionByMode[widget.panelMode]!.dx;
       if (widget.panelMode != InAppDevToolsPanelWindowMode.maximized &&
@@ -353,13 +390,6 @@ class _InAppDevToolsDraggablePanelState
 
   @override
   Widget build(BuildContext context) {
-    if (_left > widget.maxSize.width - _panelWidth) {
-      _left = widget.maxSize.width - _panelWidth;
-    }
-    if (_top > widget.maxSize.height - _panelHeight) {
-      _top = widget.maxSize.height - _panelHeight;
-    }
-
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -386,8 +416,12 @@ class _InAppDevToolsDraggablePanelState
 
 // --- Inherited scope + controller -------------------------------------------
 
-class _InAppDevToolsScope extends InheritedNotifier<InAppDevToolsController> {
-  const _InAppDevToolsScope({required super.notifier, required super.child});
+class _InAppDevToolsControllerProvider
+    extends InheritedNotifier<InAppDevToolsController> {
+  const _InAppDevToolsControllerProvider({
+    required super.notifier,
+    required super.child,
+  });
 
   @override
   bool updateShouldNotify(
@@ -447,6 +481,83 @@ class InAppDevToolsController extends ChangeNotifier {
   }
 }
 
-// --- Tool picker (horizontal list) ------------------------------------------
+class _ToolStateProvider extends InheritedNotifier<ToolStateNotifier> {
+  const _ToolStateProvider({required super.notifier, required super.child});
 
-// --- Registered panel entry (implements [Widget]) ----------------------------
+  @override
+  bool updateShouldNotify(InheritedNotifier<Listenable> oldWidget) {
+    return oldWidget.notifier != notifier;
+  }
+}
+
+class ToolStateNotifier extends ChangeNotifier {
+  final Map<Type, Object?> _state = {};
+
+  bool has<T>() {
+    return _state.containsKey(T);
+  }
+
+  T? get<T>() {
+    return _state[T] as T?;
+  }
+
+  void set<T>(T? value, {bool notify = true}) {
+    assert(
+      (T != Null && value == null) || value != null,
+      'T should be provided when value is null',
+    );
+    _state[T] = value;
+    if (notify) {
+      notifyListeners();
+    }
+  }
+}
+
+class ToolStateListenableBuilder<T> extends StatefulWidget {
+  const ToolStateListenableBuilder({
+    super.key,
+    required this.builder,
+    this.initialValue,
+  });
+  final Widget Function(BuildContext context, T? value) builder;
+  final T? initialValue;
+
+  @override
+  State<ToolStateListenableBuilder> createState() =>
+      _ToolStateListenableBuilderState<T>();
+}
+
+class _ToolStateListenableBuilderState<T>
+    extends State<ToolStateListenableBuilder<T>> {
+  T? _value;
+  late ToolStateNotifier _toolsStateProvider;
+  void _onToolStateChanged() {
+    setState(() {
+      _value = InAppDevTools.toolStateNotifier(context).get<T>();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    _toolsStateProvider = InAppDevTools.toolStateNotifier(context);
+    if (_toolsStateProvider.has<T>()) {
+      _value = _toolsStateProvider.get<T>();
+    } else {
+      _value = widget.initialValue;
+    }
+    _toolsStateProvider.removeListener(_onToolStateChanged);
+    _toolsStateProvider.addListener(_onToolStateChanged);
+    super.didChangeDependencies();
+  }
+
+  @override
+  void dispose() {
+    _toolsStateProvider.removeListener(_onToolStateChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(context, _value);
+  }
+}

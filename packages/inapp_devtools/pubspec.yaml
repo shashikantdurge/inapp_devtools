@@ -15,8 +15,8 @@ dependencies:
   http: ^1.6.0
   uuid: ^4.5.1
   rxdart: ^0.28.0
-  two_dimensional_scrollables: ^0.3.8
   google_fonts: ^8.0.2
+  intl: ^0.20.2
 
 
 dev_dependencies:

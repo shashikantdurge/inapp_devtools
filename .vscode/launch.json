@@ -49,6 +49,19 @@
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"
-        }
+        },
+        {
+            "name": "flutter_pretty_json_example",
+            "cwd": "packages/flutter_pretty_json/example",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "flutter_pretty_json_example (release mode)",
+            "cwd": "packages/flutter_pretty_json/example",
+            "request": "launch",
+            "flutterMode": "release",
+            "type": "dart"
+        },
     ]
 }
