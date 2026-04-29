@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:iad_image_data_preview/iad_image_data_preview.dart';
+import 'package:iad_json_data_preview/iad_json_data_preview.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 import 'api_playground_screen.dart';
 import 'http_test_framework.dart';
@@ -26,6 +28,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InAppDevTools(
+      tools: [
+        NetworkTool(
+          dataPreviewExtensions: [IadJsonDataPreview(), IadImageDataPreview()],
+        ),
+      ],
       child: MaterialApp(
         title: 'API Client',
         debugShowCheckedModeBanner: false,

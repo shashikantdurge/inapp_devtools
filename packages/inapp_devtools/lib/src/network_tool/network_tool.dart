@@ -7,17 +7,19 @@ import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
 import 'package:inapp_devtools/src/network_tool/http_profile_data.dart';
 import 'package:inapp_devtools/src/network_tool/http_profiler.dart';
 
-class InAppDevtoolNetwork extends StatefulWidget with InAppDevToolsItem {
-  const InAppDevtoolNetwork({super.key});
+class NetworkTool extends StatefulWidget with InAppDevToolsItem {
+  const NetworkTool({super.key, this.dataPreviewExtensions = const []});
+
+  final List<DataPreviewExtension> dataPreviewExtensions;
 
   @override
-  State<InAppDevtoolNetwork> createState() => _InAppDevtoolNetworkState();
+  State<NetworkTool> createState() => _NetworkToolState();
 
   @override
   String get label => 'Network';
 }
 
-class _InAppDevtoolNetworkState extends State<InAppDevtoolNetwork> {
+class _NetworkToolState extends State<NetworkTool> {
   final HeroController _heroController = HeroController();
   late ToolStateNotifier _toolStateNotifier;
   HttpProfileData? _selectedHttpProfileData;
@@ -26,8 +28,7 @@ class _InAppDevtoolNetworkState extends State<InAppDevtoolNetwork> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _toolStateNotifier = InAppDevTools.toolStateNotifier(context);
-    final networkState =
-        _toolStateNotifier.get<_InAppDevtoolNetworkState>() ?? this;
+    final networkState = _toolStateNotifier.get<_NetworkToolState>() ?? this;
     _selectedHttpProfileData = networkState._selectedHttpProfileData;
   }
 
@@ -80,6 +81,7 @@ class _InAppDevtoolNetworkState extends State<InAppDevtoolNetwork> {
               _FadeTransitionPage(
                 child: _HttpProfileBodyWidget(
                   httpProfileData: _selectedHttpProfileData!,
+                  dataPreviewExtensions: widget.dataPreviewExtensions,
                   popCallback: () {
                     setState(() {
                       _selectedHttpProfileData = null;
@@ -199,13 +201,23 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
   }
 }
 
+String readableSize(int size) {
+  if (size < 1024) {
+    return '$size B';
+  }
+  return '${(size / 1024).toStringAsFixed(2)} KB';
+}
+
 class _HttpProfileBodyWidget extends StatefulWidget {
   const _HttpProfileBodyWidget({
     required this.httpProfileData,
     this.popCallback,
+    this.dataPreviewExtensions = const [],
   });
+
   final HttpProfileData httpProfileData;
   final VoidCallback? popCallback;
+  final List<DataPreviewExtension> dataPreviewExtensions;
 
   @override
   State<_HttpProfileBodyWidget> createState() => __HttpProfileBodyWidgetState();
@@ -268,6 +280,15 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
   }
 
   void _initializeTabViews() {
+    ContentType? requestContentType, responseContentType;
+    if (widget.httpProfileData.request.headers?['content-type']?.firstOrNull
+        case String requestContentTypeString) {
+      requestContentType = ContentType.parse(requestContentTypeString);
+    }
+    if (widget.httpProfileData.response.headers?['content-type']?.firstOrNull
+        case String responseContentTypeString) {
+      responseContentType = ContentType.parse(responseContentTypeString);
+    }
     tabViews = [
       //Overview tab
       _Tab(
@@ -288,7 +309,11 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
         _Tab(
           tab: Tab(text: 'Request', height: tabHeight),
           name: 'Request',
-          tabView: _TabViewRequest(httpProfileData: widget.httpProfileData),
+          tabView: _DataPreviewTabView(
+            data: widget.httpProfileData.request.requestBody,
+            contentType: requestContentType,
+            dataPreviewExtensions: widget.dataPreviewExtensions,
+          ),
         ),
 
       //Response tab
@@ -296,7 +321,11 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
         _Tab(
           tab: Tab(text: 'Response', height: tabHeight),
           name: 'Response',
-          tabView: _TabViewResponse(httpProfileData: widget.httpProfileData),
+          tabView: _DataPreviewTabView(
+            data: widget.httpProfileData.response.responseBody,
+            contentType: responseContentType,
+            dataPreviewExtensions: widget.dataPreviewExtensions,
+          ),
         ),
     ];
   }
@@ -708,6 +737,45 @@ class _TabViewResponseState extends State<_TabViewResponse>
 }
 
 //################################## Payload tab widget ###################################
+
+class _DataPreviewTabView extends StatefulWidget {
+  const _DataPreviewTabView({
+    required this.data,
+    required this.contentType,
+    required this.dataPreviewExtensions,
+  });
+
+  final List<int> data;
+  final ContentType? contentType;
+
+  final List<DataPreviewExtension> dataPreviewExtensions;
+
+  @override
+  State<_DataPreviewTabView> createState() => __DataPreviewTabViewState();
+}
+
+class __DataPreviewTabViewState extends State<_DataPreviewTabView>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final contentType = widget.contentType;
+    if (contentType == null) {
+      return const Placeholder();
+    }
+    for (final dataPreviewExtension in widget.dataPreviewExtensions) {
+      if (dataPreviewExtension.isSupported(contentType)) {
+        return dataPreviewExtension.buildPreview(
+          DataContext(data: widget.data, contentType: contentType),
+        );
+      }
+    }
+    return const Placeholder();
+  }
+}
 
 class _TabViewRequest extends StatefulWidget with _CopyableWidget {
   const _TabViewRequest({required this.httpProfileData});

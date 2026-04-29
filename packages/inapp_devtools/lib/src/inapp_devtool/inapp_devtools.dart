@@ -11,13 +11,13 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:inapp_devtools/src/inapp_devtool/inapp_devtool_network.dart';
+import 'package:inapp_devtools/src/network_tool/network_tool.dart';
 import 'package:inapp_devtools/src/network_tool/http_profiler.dart'
     show HttpProfiler;
 import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart'
     show IADNetworkHttpOverrides;
 
-import 'inapp_devtools_theme.dart';
+import 'theme.dart';
 
 /// A mixin for widgets which can be used as a tool in the in-app devtools [InAppDevTools.tools].
 ///
@@ -56,7 +56,7 @@ enum InAppDevToolsPanelWindowMode {
 class InAppDevTools extends StatefulWidget {
   InAppDevTools({
     super.key,
-    this.tools = const [InAppDevtoolNetwork()],
+    this.tools = const [NetworkTool()],
     this.initialSelectedToolIndex = 0,
     this.theme,
     this.color,

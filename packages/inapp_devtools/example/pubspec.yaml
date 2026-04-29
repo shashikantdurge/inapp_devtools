@@ -35,9 +35,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   inapp_devtools:
     path: ../
-  flutter_pretty_json:
-    path: ../../flutter_pretty_json
-
+  iad_json_data_preview:
+    path: ../../iad_json_data_preview
+  iad_image_data_preview:
+    path: ../../iad_image_data_preview
 dev_dependencies:
   flutter_test:
     sdk: flutter
