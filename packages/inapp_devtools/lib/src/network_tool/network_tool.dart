@@ -1,4 +1,4 @@
-import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +6,9 @@ import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
 import 'package:inapp_devtools/src/network_tool/http_profile_data.dart';
 import 'package:inapp_devtools/src/network_tool/http_profiler.dart';
+
+const _kRequestRowHeight = 36.0;
+const _kSeparatorHeight = 1.0;
 
 class NetworkTool extends StatefulWidget with InAppDevToolsItem {
   const NetworkTool({super.key, this.dataPreviewExtensions = const []});
@@ -45,33 +48,15 @@ class _NetworkToolState extends State<NetworkTool> {
       body: HeroControllerScope(
         controller: _heroController,
         child: Navigator(
+          requestFocus: false,
           pages: [
             //Requests list page
             MaterialPage(
-              child: StreamBuilder(
-                stream: HttpProfiler.instance.getProfileDataStream(),
-                builder: (context, snapshot) {
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    separatorBuilder: (context, index) =>
-                        Divider(color: Colors.grey[850], height: 1),
-                    itemCount: snapshot.data?.length ?? 0,
-                    itemBuilder: (context, index) {
-                      final data = snapshot.data![index];
-                      return _HttpProfileHeaderWidget(
-                        httpProfileData: data,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 8,
-                          horizontal: 16,
-                        ),
-                        onTap: () {
-                          setState(() {
-                            _selectedHttpProfileData = data;
-                          });
-                        },
-                      );
-                    },
-                  );
+              child: _NetworkRequestListView(
+                onItemTap: (data) {
+                  setState(() {
+                    _selectedHttpProfileData = data;
+                  });
                 },
               ),
             ),
@@ -79,13 +64,18 @@ class _NetworkToolState extends State<NetworkTool> {
             //Selected request details page
             if (_selectedHttpProfileData != null)
               _FadeTransitionPage(
-                child: _HttpProfileBodyWidget(
-                  httpProfileData: _selectedHttpProfileData!,
-                  dataPreviewExtensions: widget.dataPreviewExtensions,
-                  popCallback: () {
-                    setState(() {
-                      _selectedHttpProfileData = null;
-                    });
+                child: ListenableBuilder(
+                  listenable: _selectedHttpProfileData!,
+                  builder: (_, _) {
+                    return _HttpProfileBodyWidget(
+                      httpProfileData: _selectedHttpProfileData!,
+                      dataPreviewExtensions: widget.dataPreviewExtensions,
+                      popCallback: () {
+                        setState(() {
+                          _selectedHttpProfileData = null;
+                        });
+                      },
+                    );
                   },
                 ),
               ),
@@ -101,13 +91,118 @@ class _NetworkToolState extends State<NetworkTool> {
   }
 }
 
+class _NetworkRequestListView extends StatefulWidget {
+  const _NetworkRequestListView({required this.onItemTap});
+  final void Function(HttpProfileData) onItemTap;
+
+  @override
+  State<_NetworkRequestListView> createState() =>
+      __NetworkRequestListViewState();
+}
+
+class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
+  ScrollController scrollController = ScrollController();
+  StreamSubscription? _profileDataLengthStreamSubscription;
+  bool _maintainScrollState = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileDataLengthStreamSubscription = HttpProfiler.instance
+        .getProfileDataStream()
+        .map((event) => event.length)
+        .distinct()
+        .listen((_) => scrollToUserScrolledPosition());
+  }
+
+  void scrollToUserScrolledPosition() {
+    if (_maintainScrollState) {
+      scrollController.jumpTo(
+        scrollController.offset + _kSeparatorHeight + _kRequestRowHeight,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _profileDataLengthStreamSubscription?.cancel();
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<UserScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.extentBefore > 0) {
+          _maintainScrollState = true;
+        } else {
+          _maintainScrollState = false;
+        }
+        return false;
+      },
+      child: StreamBuilder(
+        stream: HttpProfiler.instance.getProfileDataStream(),
+        initialData: HttpProfiler.instance.getProfileData(),
+        builder: (context, snapshot) {
+          final length = snapshot.data?.length ?? 0;
+          return Scrollbar(
+            controller: scrollController,
+            interactive: true,
+            trackVisibility: true,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: CustomScrollView(
+                controller: scrollController,
+                reverse: true,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    sliver: SliverList.separated(
+                      separatorBuilder: (context, index) => Divider(
+                        color: Colors.grey[850],
+                        height: _kSeparatorHeight,
+                      ),
+                      itemCount: length,
+                      itemBuilder: (context, index) {
+                        final data = snapshot.data![length - index - 1];
+                        return ListenableBuilder(
+                          listenable: data,
+                          builder: (context, child) {
+                            return _HttpProfileHeaderWidget(
+                              httpProfileData: data,
+                              onTap: () => widget.onItemTap(data),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  SliverFillRemaining(
+                    fillOverscroll: true,
+                    hasScrollBody: false,
+                    child: Container(
+                      alignment: Alignment.center,
+                      constraints: BoxConstraints(minHeight: 60),
+                      child: Text(
+                        'Start of the network logs',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _HttpProfileHeaderWidget extends StatelessWidget {
-  const _HttpProfileHeaderWidget({
-    required this.httpProfileData,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
-    this.onTap,
-  });
-  final EdgeInsets padding;
+  const _HttpProfileHeaderWidget({required this.httpProfileData, this.onTap});
+  final EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 8);
   final HttpProfileData httpProfileData;
   final VoidCallback? onTap;
   Color getColorByMethod(String method) {
@@ -130,9 +225,13 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
   }
 
   /// Postman-style status colors: 1xx blue, 2xx green, 3xx amber, 4xx orange, 5xx red.
-  Color getColorByStatusCode(int statusCode) {
-    if (statusCode == 0) {
-      return const Color(0xFF9E9E9E);
+  Color getColorByStatusCode(int? statusCode) {
+    if (statusCode == null) {
+      if (httpProfileData.request.requestInProgress) {
+        return const Color(0xFF9E9E9E);
+      } else {
+        return const Color(0xFFFF6C37);
+      }
     }
     if (statusCode >= 100 && statusCode < 200) {
       return const Color(0xFF42A5F5);
@@ -155,7 +254,7 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = getColorByStatusCode(
-      httpProfileData.response.statusCode ?? 0,
+      httpProfileData.response.statusCode,
     );
     String displayUrl = httpProfileData.uri.path;
     if (httpProfileData.uri.hasQuery) {
@@ -165,38 +264,53 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
       displayUrl += '#${httpProfileData.uri.fragment}';
     }
 
-    Widget child = Row(
-      spacing: 8,
-      children: [
-        Text(
-          httpProfileData.method.toUpperCase(),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-            color: getColorByMethod(httpProfileData.method),
-          ),
+    Widget child = SizedBox(
+      height: _kRequestRowHeight,
+      child: Padding(
+        padding: padding,
+        child: Row(
+          spacing: 8,
+          children: [
+            Expanded(
+              child: Text(
+                httpProfileData.method.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: getColorByMethod(httpProfileData.method),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 7,
+              child: Text(
+                displayUrl,
+                style: TextStyle(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                httpProfileData.statusCodeWithValue,
+                style: TextStyle(fontSize: 12, color: statusColor),
+              ),
+            ),
+          ],
         ),
-        Expanded(child: Text(displayUrl, style: TextStyle(fontSize: 12))),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            httpProfileData.response.statusCode?.toString() ?? 'pending',
-            style: TextStyle(fontSize: 12, color: statusColor),
-          ),
-        ),
-      ],
+      ),
     );
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: padding,
-        child: Hero(tag: httpProfileData, child: child),
-      ),
+      child: Hero(tag: httpProfileData, child: child),
     );
   }
 }
@@ -327,6 +441,16 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
             dataPreviewExtensions: widget.dataPreviewExtensions,
           ),
         ),
+
+      if (widget.httpProfileData.request.error case Object error)
+        _Tab(
+          tab: Tab(text: 'Error', height: tabHeight),
+          name: 'Error',
+          tabView: SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: Text('$error'),
+          ),
+        ),
     ];
   }
 
@@ -349,7 +473,6 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
             children: [
               _HttpProfileHeaderWidget(
                 httpProfileData: widget.httpProfileData,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 onTap: widget.popCallback,
               ),
               Row(
@@ -692,50 +815,6 @@ class _TabViewHeadersState extends State<_TabViewHeaders> {
   }
 }
 
-//################################## Response tab widget ###################################
-
-class _TabViewResponse extends StatefulWidget with _CopyableWidget {
-  const _TabViewResponse({required this.httpProfileData});
-  final HttpProfileData httpProfileData;
-
-  @override
-  String? getWidgetContent() {
-    try {
-      final utf8DecodedBody = utf8.decode(
-        httpProfileData.response.responseBody,
-      );
-      try {
-        return JsonEncoder.withIndent(
-          '\t',
-        ).convert(jsonDecode(utf8DecodedBody));
-      } catch (e) {
-        return utf8DecodedBody;
-      }
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  State<_TabViewResponse> createState() => _TabViewResponseState();
-}
-
-class _TabViewResponseState extends State<_TabViewResponse>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return _DataDisplayWidget(
-      data: widget.httpProfileData.response.responseBody,
-      contentType:
-          widget.httpProfileData.response.headers?['content-type']?.first,
-    );
-  }
-}
-
 //################################## Payload tab widget ###################################
 
 class _DataPreviewTabView extends StatefulWidget {
@@ -777,96 +856,7 @@ class __DataPreviewTabViewState extends State<_DataPreviewTabView>
   }
 }
 
-class _TabViewRequest extends StatefulWidget with _CopyableWidget {
-  const _TabViewRequest({required this.httpProfileData});
-  final HttpProfileData httpProfileData;
-
-  @override
-  String? getWidgetContent() {
-    try {
-      final utf8DecodedBody = utf8.decode(httpProfileData.request.requestBody);
-      try {
-        return JsonEncoder.withIndent(
-          '\t',
-        ).convert(jsonDecode(utf8DecodedBody));
-      } catch (e) {
-        return utf8DecodedBody;
-      }
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  State<_TabViewRequest> createState() => _TabViewRequestState();
-}
-
-class _TabViewRequestState extends State<_TabViewRequest>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return _DataDisplayWidget(
-      data: widget.httpProfileData.request.requestBody,
-      contentType:
-          widget.httpProfileData.request.headers?['content-type']?.first,
-    );
-  }
-}
-
 //################################## Common widgets ###################################
-
-class _DataDisplayWidget extends StatefulWidget {
-  const _DataDisplayWidget({required this.data, required this.contentType});
-  final List<int> data;
-  final String? contentType;
-
-  @override
-  State<_DataDisplayWidget> createState() => _DataDisplayWidgetState();
-}
-
-class _DataDisplayWidgetState extends State<_DataDisplayWidget> {
-  final scrollController = ScrollController();
-
-  @override
-  void dispose() {
-    scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Widget buildScrollableText(String text) {
-      return Scrollbar(
-        controller: scrollController,
-        child: SingleChildScrollView(
-          controller: scrollController,
-          child: Text(text),
-        ),
-      );
-    }
-
-    try {
-      final utf8DecodedBody = utf8.decode(widget.data);
-      return buildScrollableText(utf8DecodedBody);
-    } on FormatException {
-      if (widget.contentType?.contains('image/') ?? false) {
-        return Image.memory(
-          Uint8List.fromList(widget.data),
-          errorBuilder: (context, error, stackTrace) {
-            return buildScrollableText('Binary data:\n${widget.data}');
-          },
-        );
-      }
-      return buildScrollableText('Binary data:\n${widget.data}');
-    } catch (e) {
-      return buildScrollableText('Binary data:\n${widget.data}');
-    }
-  }
-}
 
 //################################## Key Value Row Widget ###################################
 

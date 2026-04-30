@@ -184,6 +184,7 @@ class _InAppDevToolsState extends State<InAppDevTools> {
       child: Builder(
         builder: (context) {
           final devPanel = SafeArea(
+            maintainBottomViewPadding: true,
             child: _ToolStateProvider(
               notifier: _toolsState,
               child: LayoutBuilder(

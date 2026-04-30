@@ -30,6 +30,8 @@ abstract class HttpProfiler {
   /// Returns a stream of the profile data.
   Stream<List<HttpProfileData>> getProfileDataStream();
 
+  List<HttpProfileData>? getProfileData();
+
   void dispose() {}
 }
 
@@ -56,6 +58,9 @@ class HttpProfilerMemoryImpl implements HttpProfiler {
   @override
   Stream<List<HttpProfileData>> getProfileDataStream() =>
       _profileDataSubject.stream;
+
+  @override
+  List<HttpProfileData>? getProfileData() => _profileDataSubject.valueOrNull;
 
   @override
   void dispose() {

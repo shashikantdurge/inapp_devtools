@@ -237,9 +237,11 @@
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show ChangeNotifier;
+
 import 'http_profiler.dart';
 
-class HttpProfileData {
+class HttpProfileData with ChangeNotifier {
   final String method;
   final Uri uri;
   final HttpProfileRequestData request;
@@ -249,6 +251,7 @@ class HttpProfileData {
     : request = HttpProfileRequestData(method: method, uri: uri),
       response = HttpProfileResponseData(method: method, uri: uri) {
     request.requestStartedAt = DateTime.now();
+    HttpProfiler.instance.profileData(this);
   }
 
   Map toJson() {
@@ -261,7 +264,7 @@ class HttpProfileData {
   }
 
   void sendDataToProfiler() {
-    HttpProfiler.instance.profileData(this);
+    notifyListeners();
   }
 }
 
@@ -364,10 +367,16 @@ extension HttpProfileDataXUtils on HttpProfileData {
   String toCurl() => _httpProfileRequestDataToCurl(request);
 
   String get statusCodeWithValue {
+    if (response.statusCode case final int statusCode) {
+      return '$statusCode';
+    }
+    if (request.requestInProgress == false) {
+      return 'Error';
+    }
     if (response.statusCode == null && response.reasonPhrase == null) {
       return 'pending';
     }
-    return [response.statusCode?.toString(), response.reasonPhrase].join(' ');
+    return 'Unknown';
   }
 }
 

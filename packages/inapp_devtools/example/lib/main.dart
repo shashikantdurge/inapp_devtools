@@ -192,7 +192,9 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       final uri = Uri.parse(url);
       // 1. Connection + request line + headers
-      final request = await client.openUrl(method, uri);
+      final request = await client
+          .openUrl(method, uri)
+          .timeout(Duration(seconds: 2));
       headers?.forEach((name, value) => request.headers.set(name, value));
       if (bodyBytes != null && bodyBytes.isNotEmpty) {
         request.add(bodyBytes);
