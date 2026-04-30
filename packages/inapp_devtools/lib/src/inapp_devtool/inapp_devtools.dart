@@ -199,6 +199,7 @@ class _InAppDevToolsState extends State<InAppDevTools> {
                           panelMode: _controller.panelMode,
                           child: MaterialApp(
                             debugShowCheckedModeBanner: false,
+                            onNavigationNotification: (_) => false,
                             home: _buildPanelContent(context),
                             theme: getDakTheme(),
                           ),
