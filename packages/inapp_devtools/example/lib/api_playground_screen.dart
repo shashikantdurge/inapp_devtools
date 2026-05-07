@@ -96,7 +96,7 @@ class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
     final muted = textTheme.bodySmall?.color;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('API Playground')),
+      appBar: AppBar(title: TextField()),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

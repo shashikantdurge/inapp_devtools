@@ -1,3 +1,5 @@
+rootProject.name = "flutter_pretty_json_example_android"
+
 pluginManagement {
     val flutterSdkPath =
         run {
