@@ -2,27 +2,38 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 
-class IadImageDataPreview extends DataPreviewExtension {
+class IadImageDataPreview extends DataPreviewExtension<ImageDataContext> {
   @override
-  Widget buildPreview(DataContext dataContext) {
-    return _ImagePreviewWidget(dataContext: dataContext);
-  }
-
-  @override
-  String? copyableText(DataContext dataContext) {
+  ImageDataContext? mayInitialize(DataContext dataContext) {
+    if (dataContext.contentType case ContentType(
+      primaryType: 'image',
+      mimeType: String mimeType,
+    )) {
+      return ImageDataContext(
+        data: Uint8List.fromList(dataContext.data),
+        imageFormat: mimeType,
+      );
+    }
     return null;
   }
 
   @override
-  bool isSupported(ContentType contentType) {
-    return contentType.primaryType == 'image';
+  Widget buildPreview(ImageDataContext data) {
+    return _ImagePreviewWidget(data: data);
   }
 }
 
-class _ImagePreviewWidget extends StatefulWidget {
-  final DataContext dataContext;
+class ImageDataContext {
+  final Uint8List data;
+  final String imageFormat;
 
-  const _ImagePreviewWidget({required this.dataContext});
+  ImageDataContext({required this.data, required this.imageFormat});
+}
+
+class _ImagePreviewWidget extends StatefulWidget {
+  final ImageDataContext data;
+
+  const _ImagePreviewWidget({required this.data});
 
   @override
   State<_ImagePreviewWidget> createState() => __ImagePreviewWidgetState();
@@ -40,7 +51,7 @@ class __ImagePreviewWidgetState extends State<_ImagePreviewWidget> {
   }
 
   void _loadImage() {
-    final bytes = Uint8List.fromList(widget.dataContext.data);
+    final bytes = widget.data.data;
     image = Image.memory(bytes);
     imageSizeStr = _readableSize(bytes.length);
     image.image
@@ -75,9 +86,12 @@ class __ImagePreviewWidgetState extends State<_ImagePreviewWidget> {
         children: [
           Padding(padding: const EdgeInsets.all(24), child: image),
           Divider(),
-          infoRow('Format', widget.dataContext.contentType.mimeType),
+          infoRow('Format', widget.data.imageFormat),
           infoRow('Size', imageSizeStr),
-          infoRow('Dimensions', dimensions != null ? '${dimensions?.$1} x ${dimensions?.$2}' : ''),
+          infoRow(
+            'Dimensions',
+            dimensions != null ? '${dimensions?.$1} x ${dimensions?.$2}' : '',
+          ),
         ],
       ),
     );

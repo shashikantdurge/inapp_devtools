@@ -292,15 +292,24 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                httpProfileData.statusCodeWithValue,
-                style: TextStyle(fontSize: 12, color: statusColor),
+            Expanded(
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    httpProfileData.statusCodeWithValue,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: statusColor),
+                  ),
+                ),
               ),
             ),
           ],
@@ -350,7 +359,9 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
   late ToolStateNotifier _toolStateNotifier;
   late TabController _tabController;
   late List<_Tab> tabViews;
+  late _NetworkActionsNotifier _networkActionsNotifier;
   static const tabHeight = 32.0;
+  late final ValueNotifier<String> _activeNetworkTabNotifier;
 
   String get tabName => tabViews[_tabController.index].name;
 
@@ -363,6 +374,15 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
       vsync: this,
       initialIndex: 0,
     );
+    _activeNetworkTabNotifier = ValueNotifier<String>(tabName);
+    _updateActiveNetworkTab();
+    _tabController.addListener(_onTabStateChange);
+    _networkActionsNotifier = _NetworkActionsNotifier();
+  }
+
+  void _onTabStateChange() {
+    final currentIndex = _tabController.index;
+    _activeNetworkTabNotifier.value = tabViews[currentIndex].name;
   }
 
   @override
@@ -388,10 +408,14 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
         length: tabViews.length,
         vsync: this,
         animationDuration: _tabController.animationDuration,
-        initialIndex: _tabController.index,
+        initialIndex: _tabController.index.clamp(0, tabViews.length - 1),
       );
+      _tabController.addListener(_onTabStateChange);
+      _updateActiveNetworkTab();
     }
   }
+
+  void _updateActiveNetworkTab() => _activeNetworkTabNotifier.value = tabName;
 
   void _initializeTabViews() {
     ContentType? requestContentType, responseContentType;
@@ -408,22 +432,30 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
       _Tab(
         tab: Tab(text: 'Overview', height: tabHeight),
         name: 'Overview',
-        tabView: _TabViewOverview(httpProfileData: widget.httpProfileData),
+        tabView: _TabViewOverview(
+          httpProfileData: widget.httpProfileData,
+          tabName: 'Overview',
+        ),
       ),
 
       //Headers tab
       _Tab(
         tab: Tab(text: 'Headers', height: tabHeight),
         name: 'Headers',
-        tabView: _TabViewHeaders(httpProfileData: widget.httpProfileData),
+        tabView: _TabViewHeaders(
+          httpProfileData: widget.httpProfileData,
+          tabName: 'Headers',
+        ),
       ),
 
       //Request tab
-      if (widget.httpProfileData.request.requestBody.isNotEmpty)
+      if (widget.httpProfileData.request.requestBody.isNotEmpty &&
+          !widget.httpProfileData.request.requestInProgress)
         _Tab(
           tab: Tab(text: 'Request', height: tabHeight),
           name: 'Request',
           tabView: _DataPreviewTabView(
+            tabName: 'Request',
             data: widget.httpProfileData.request.requestBody,
             contentType: requestContentType,
             dataPreviewExtensions: widget.dataPreviewExtensions,
@@ -431,11 +463,13 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
         ),
 
       //Response tab
-      if (widget.httpProfileData.response.responseBody.isNotEmpty)
+      if (widget.httpProfileData.response.responseBody.isNotEmpty &&
+          widget.httpProfileData.response.responseInProgress == false)
         _Tab(
           tab: Tab(text: 'Response', height: tabHeight),
           name: 'Response',
           tabView: _DataPreviewTabView(
+            tabName: 'Response',
             data: widget.httpProfileData.response.responseBody,
             contentType: responseContentType,
             dataPreviewExtensions: widget.dataPreviewExtensions,
@@ -457,6 +491,8 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
   @override
   void dispose() {
     _tabController.dispose();
+    _activeNetworkTabNotifier.dispose();
+    _networkActionsNotifier.dispose();
     _toolStateNotifier.set(this, notify: false);
     super.dispose();
   }
@@ -465,118 +501,131 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
   Widget build(BuildContext context) {
     final t = InAppDevToolsTheme.of(context);
 
-    return Column(
-      children: [
-        ColoredBox(
-          color: t.appBarBackgroundColor.withValues(alpha: 0.5),
-          child: Column(
-            children: [
-              _HttpProfileHeaderWidget(
-                httpProfileData: widget.httpProfileData,
-                onTap: widget.popCallback,
-              ),
-              Row(
-                children: [
-                  //Tab Bar
-                  Expanded(
-                    child: TabBar(
-                      controller: _tabController,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      padding: const EdgeInsets.only(left: 8, right: 8),
-                      labelPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 0,
-                      ),
-                      indicatorSize: TabBarIndicatorSize.label,
-                      indicator: UnderlineTabIndicator(
-                        borderSide: BorderSide(
-                          color: t.appBarMenuUnderlineColor,
-                          width: 2,
+    return _NetworkDetailWidgetScope(
+      activeNetworkTabNotifier: _activeNetworkTabNotifier,
+      networkActionsNotifier: _networkActionsNotifier,
+      child: Column(
+        children: [
+          ColoredBox(
+            color: t.appBarBackgroundColor.withValues(alpha: 0.5),
+            child: Column(
+              children: [
+                _HttpProfileHeaderWidget(
+                  httpProfileData: widget.httpProfileData,
+                  onTap: widget.popCallback,
+                ),
+                Row(
+                  children: [
+                    //Tab Bar
+                    Expanded(
+                      child: TabBar(
+                        controller: _tabController,
+                        isScrollable: true,
+                        tabAlignment: TabAlignment.start,
+                        padding: const EdgeInsets.only(left: 8, right: 8),
+                        labelPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 0,
                         ),
-                        insets: EdgeInsets.zero,
+                        indicatorSize: TabBarIndicatorSize.label,
+                        indicator: UnderlineTabIndicator(
+                          borderSide: BorderSide(
+                            color: t.appBarMenuUnderlineColor,
+                            width: 2,
+                          ),
+                          insets: EdgeInsets.zero,
+                        ),
+                        dividerColor: Colors.transparent,
+                        dividerHeight: 1,
+                        labelColor: const Color(0xFFE0E0E0),
+                        unselectedLabelColor: const Color(0xFF9E9E9E),
+                        labelStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overlayColor: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.pressed) ||
+                              states.contains(WidgetState.hovered)) {
+                            return t.appBarToolSelectorBackgroundColor
+                                .withValues(alpha: 0.4);
+                          }
+                          return null;
+                        }),
+                        tabs: tabViews.map((tab) => tab.tab).toList(),
                       ),
-                      dividerColor: Colors.transparent,
-                      dividerHeight: 1,
-                      labelColor: const Color(0xFFE0E0E0),
-                      unselectedLabelColor: const Color(0xFF9E9E9E),
-                      labelStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      unselectedLabelStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overlayColor: WidgetStateProperty.resolveWith((states) {
-                        if (states.contains(WidgetState.pressed) ||
-                            states.contains(WidgetState.hovered)) {
-                          return t.appBarToolSelectorBackgroundColor.withValues(
-                            alpha: 0.4,
-                          );
-                        }
-                        return null;
-                      }),
-                      tabs: tabViews.map((tab) => tab.tab).toList(),
                     ),
-                  ),
 
-                  //Copy button
-                  Builder(
-                    builder: (context) {
-                      return ListenableBuilder(
-                        listenable: _tabController,
-                        builder: (BuildContext context, Widget? child) {
-                          final index = _tabController.index;
-                          final widget = tabViews[index].tabView;
-                          return IconButton(
-                            onPressed: widget is _CopyableWidget
-                                ? () {
-                                    if (widget.getWidgetContent()
-                                        case String content) {
-                                      Clipboard.setData(
-                                        ClipboardData(text: content),
-                                      );
-                                    }
-                                  }
-                                : null,
-                            icon: Icon(Icons.copy),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                    //Copy button
+                    ValueListenableBuilder<String>(
+                      valueListenable: _activeNetworkTabNotifier,
+                      builder: (context, activeTabName, _) {
+                        return ListenableBuilder(
+                          listenable: _networkActionsNotifier,
+                          builder: (BuildContext context, Widget? child) {
+                            final copyContentCallback = _networkActionsNotifier
+                                .copyContentCallback(activeTabName);
+                            return IconButton(
+                              onPressed: copyContentCallback,
+                              icon: Icon(Icons.copy),
+                            );
+                          },
+                        );
+                      },
+                    ),
 
-                  //Close button
-                  IconButton(
-                    onPressed: widget.popCallback,
-                    icon: Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ],
+                    //Close button
+                    IconButton(
+                      onPressed: widget.popCallback,
+                      icon: Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: tabViews.map((tab) => tab.tabView).toList(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: tabViews.map((tab) => tab.tabView).toList(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
 //################################## Overview tab widget ###################################
 
-class _TabViewOverview extends StatelessWidget with _CopyableWidget {
-  const _TabViewOverview({required this.httpProfileData});
+class _TabViewOverview extends StatefulWidget {
+  const _TabViewOverview({
+    required this.httpProfileData,
+    required this.tabName,
+  });
   final HttpProfileData httpProfileData;
+  final String tabName;
 
   @override
-  String? getWidgetContent() {
-    final data = httpProfileData;
+  State<_TabViewOverview> createState() => _TabViewOverviewState();
+}
+
+class _TabViewOverviewState extends State<_TabViewOverview>
+    with _TabStateChangeListener {
+  @override
+  String get tabName => widget.tabName;
+
+  @override
+  void onTabActive() {
+    _NetworkDetailWidgetScope.of(context).networkActionsNotifier
+        .setCopyContentCallback(copyOverviewContent, tabName);
+  }
+
+  void copyOverviewContent() {
+    final data = widget.httpProfileData;
     final firstLine = '${data.method.toUpperCase()} ${data.uri}';
 
     final lines = <String>[firstLine, 'Status: ${data.statusCodeWithValue}'];
@@ -604,7 +653,8 @@ class _TabViewOverview extends StatelessWidget with _CopyableWidget {
       lines.add('End Time: ${formatLocalTime(endTime)}');
     }
 
-    return lines.join('\n');
+    final content = lines.join('\n');
+    debugPrint('Copy content: $content');
   }
 
   @override
@@ -612,11 +662,11 @@ class _TabViewOverview extends StatelessWidget with _CopyableWidget {
     Duration? responseTime;
     DateTime? startTime;
     DateTime? endTime;
-    if (httpProfileData.request.requestStartedAt
+    if (widget.httpProfileData.request.requestStartedAt
         case DateTime requestStartedAt) {
       startTime = requestStartedAt;
     }
-    if (httpProfileData.response.responseEndedAt
+    if (widget.httpProfileData.response.responseEndedAt
         case DateTime responseEndedAt) {
       endTime = responseEndedAt;
     }
@@ -629,17 +679,17 @@ class _TabViewOverview extends StatelessWidget with _CopyableWidget {
         children: [
           _KeyValueRowWidget(
             keyWidget: Text('Method'),
-            valueWidget: Text(httpProfileData.method.toUpperCase()),
+            valueWidget: Text(widget.httpProfileData.method.toUpperCase()),
           ),
           _KeyValueRowWidget(
             keyWidget: Text('Request URL'),
-            valueWidget: Text(httpProfileData.uri.toString()),
+            valueWidget: Text(widget.httpProfileData.uri.toString()),
           ),
           _KeyValueRowWidget(
             keyWidget: Text('Status'),
-            valueWidget: Text(httpProfileData.statusCodeWithValue),
+            valueWidget: Text(widget.httpProfileData.statusCodeWithValue),
           ),
-          if (httpProfileData.response.headers case {
+          if (widget.httpProfileData.response.headers case {
             'content-type': [var contentType],
           })
             _KeyValueRowWidget(
@@ -669,7 +719,7 @@ class _TabViewOverview extends StatelessWidget with _CopyableWidget {
             child: TextButton.icon(
               onPressed: () {
                 Clipboard.setData(
-                  ClipboardData(text: httpProfileData.toCurl()),
+                  ClipboardData(text: widget.httpProfileData.toCurl()),
                 );
               },
               icon: Icon(Icons.copy),
@@ -684,12 +734,12 @@ class _TabViewOverview extends StatelessWidget with _CopyableWidget {
 
 //################################## Headers tab widget ###################################
 
-class _TabViewHeaders extends StatefulWidget with _CopyableWidget {
-  const _TabViewHeaders({required this.httpProfileData});
+class _TabViewHeaders extends StatefulWidget {
+  const _TabViewHeaders({required this.httpProfileData, required this.tabName});
+  final String tabName;
   final HttpProfileData httpProfileData;
 
-  @override
-  String? getWidgetContent() {
+  void copyHeadersContent() {
     final d = httpProfileData;
     final buffer = StringBuffer()
       ..writeln('${d.method.toUpperCase()} ${d.uri}')
@@ -711,14 +761,26 @@ class _TabViewHeaders extends StatefulWidget with _CopyableWidget {
       }
     }
 
-    return buffer.toString().trimRight();
+    final content = buffer.toString().trimRight();
+    debugPrint('Copy content: $content');
+    Clipboard.setData(ClipboardData(text: content));
   }
 
   @override
   State<_TabViewHeaders> createState() => _TabViewHeadersState();
 }
 
-class _TabViewHeadersState extends State<_TabViewHeaders> {
+class _TabViewHeadersState extends State<_TabViewHeaders>
+    with _TabStateChangeListener {
+  @override
+  String get tabName => widget.tabName;
+
+  @override
+  void onTabActive() {
+    _NetworkDetailWidgetScope.of(context).networkActionsNotifier
+        .setCopyContentCallback(widget.copyHeadersContent, tabName);
+  }
+
   late ToolStateNotifier toolStateNotifier;
   bool generalTabExpanded = true;
   bool responseHeadersTabExpanded = true;
@@ -819,11 +881,12 @@ class _TabViewHeadersState extends State<_TabViewHeaders> {
 
 class _DataPreviewTabView extends StatefulWidget {
   const _DataPreviewTabView({
+    required this.tabName,
     required this.data,
     required this.contentType,
     required this.dataPreviewExtensions,
   });
-
+  final String tabName;
   final List<int> data;
   final ContentType? contentType;
 
@@ -834,29 +897,109 @@ class _DataPreviewTabView extends StatefulWidget {
 }
 
 class __DataPreviewTabViewState extends State<_DataPreviewTabView>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, _TabStateChangeListener {
+  DataPreviewExtension? _supportedDataPreviewExtension;
+  dynamic _previewExtensionData;
+
+  @override
+  void initState() {
+    super.initState();
+    final dataContext = DataContext(
+      data: widget.data,
+      contentType: widget.contentType,
+    );
+    for (final dataPreviewExtension in [
+      ...widget.dataPreviewExtensions,
+      DefaultDataPreviewExtension(),
+    ]) {
+      final data = dataPreviewExtension.mayInitialize(dataContext);
+      if (data != null) {
+        _supportedDataPreviewExtension = dataPreviewExtension;
+        _previewExtensionData = data;
+        break;
+      }
+    }
+  }
+
+  @override
+  String get tabName => widget.tabName;
+
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void onTabActive() {
+    _NetworkDetailWidgetScope.of(
+      context,
+    ).networkActionsNotifier.setCopyContentCallback(
+      _supportedDataPreviewExtension?.copyContentCallback.call(
+        _previewExtensionData,
+      ),
+      tabName,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
-    final contentType = widget.contentType;
-    if (contentType == null) {
-      return const Placeholder();
+    if (_previewExtensionData != null &&
+        _supportedDataPreviewExtension != null) {
+      return _supportedDataPreviewExtension!.buildPreview(
+        _previewExtensionData,
+      );
     }
-    for (final dataPreviewExtension in widget.dataPreviewExtensions) {
-      if (dataPreviewExtension.isSupported(contentType)) {
-        return dataPreviewExtension.buildPreview(
-          DataContext(data: widget.data, contentType: contentType),
-        );
-      }
-    }
-    return const Placeholder();
+    return DefaultTextStyle(
+      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: 8,
+        children: [
+          Text.rich(
+            TextSpan(children: [TextSpan(text: 'Data Preview not available')]),
+          ),
+          Text('Content Type: ${widget.contentType?.mimeType ?? 'unknown'}'),
+          Text('Data Size: ${readableSize(widget.data.length)}'),
+        ],
+      ),
+    );
   }
 }
 
 //################################## Common widgets ###################################
+
+class _NetworkDetailWidgetScope extends InheritedWidget {
+  final ValueNotifier<String> activeNetworkTabNotifier;
+  final _NetworkActionsNotifier networkActionsNotifier;
+  const _NetworkDetailWidgetScope({
+    required this.activeNetworkTabNotifier,
+    required this.networkActionsNotifier,
+    required super.child,
+  });
+
+  @override
+  bool updateShouldNotify(_NetworkDetailWidgetScope oldWidget) {
+    return oldWidget.activeNetworkTabNotifier != activeNetworkTabNotifier ||
+        oldWidget.networkActionsNotifier != networkActionsNotifier;
+  }
+
+  static _NetworkDetailWidgetScope of(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_NetworkDetailWidgetScope>()!;
+  }
+}
+
+/// Notifier for network actions like copy content.
+class _NetworkActionsNotifier extends ChangeNotifier {
+  final Map<String, VoidCallback?> _copyContentCallbacks = {};
+
+  VoidCallback? copyContentCallback(String tabName) =>
+      _copyContentCallbacks[tabName];
+
+  void setCopyContentCallback(VoidCallback? callback, String tabName) {
+    _copyContentCallbacks[tabName] = callback;
+    Future.microtask(notifyListeners);
+  }
+}
 
 //################################## Key Value Row Widget ###################################
 
@@ -921,6 +1064,38 @@ class _FadeTransitionPage extends Page<void> {
   }
 }
 
-mixin _CopyableWidget on Widget {
-  String? getWidgetContent();
+mixin _TabStateChangeListener<T extends StatefulWidget> on State<T> {
+  String get tabName;
+  ValueNotifier<String>? _activeNetworkTabNotifier;
+  bool? _lastIsActive;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_lastIsActive == null) {
+      _activeNetworkTabNotifier ??= _NetworkDetailWidgetScope.of(
+        context,
+      ).activeNetworkTabNotifier;
+      _activeNetworkTabNotifier!.removeListener(_onActiveTabChanged);
+      _activeNetworkTabNotifier!.addListener(_onActiveTabChanged);
+      _onActiveTabChanged();
+    }
+  }
+
+  void _onActiveTabChanged() {
+    final isActive = _activeNetworkTabNotifier!.value == tabName;
+    if (_lastIsActive != isActive) {
+      _lastIsActive = isActive;
+      if (isActive) {
+        onTabActive();
+      }
+    }
+  }
+
+  void onTabActive();
+
+  @override
+  void dispose() {
+    _activeNetworkTabNotifier?.removeListener(_onActiveTabChanged);
+    super.dispose();
+  }
 }

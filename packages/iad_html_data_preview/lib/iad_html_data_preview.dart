@@ -2,30 +2,36 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-class IadHtmlDataPreview extends DataPreviewExtension {
+class IadHtmlDataPreview extends DataPreviewExtension<String> {
   @override
-  Widget buildPreview(DataContext dataContext) {
-    return _HtmlPreviewWidget(dataContext: dataContext);
-  }
-
-  @override
-  String? copyableText(DataContext dataContext) {
+  String? mayInitialize(DataContext dataContext) {
+    if (dataContext.contentType case ContentType(mimeType: 'text/html')) {
+      return utf8.decode(dataContext.data);
+    }
     return null;
   }
 
   @override
-  bool isSupported(ContentType contentType) {
-    return contentType.mimeType == 'text/html';
+  Widget buildPreview(String data) {
+    return _HtmlPreviewWidget(data: data);
+  }
+
+  @override
+  VoidCallback? copyContentCallback(String data) {
+    return () {
+      Clipboard.setData(ClipboardData(text: data));
+    };
   }
 }
 
 class _HtmlPreviewWidget extends StatefulWidget {
-  final DataContext dataContext;
-  const _HtmlPreviewWidget({required this.dataContext});
+  final String data;
+  const _HtmlPreviewWidget({required this.data});
   @override
   State<_HtmlPreviewWidget> createState() => __HtmlPreviewWidgetState();
 }
@@ -40,9 +46,7 @@ class __HtmlPreviewWidgetState extends State<_HtmlPreviewWidget> {
   @override
   void initState() {
     super.initState();
-    _htmlWithImageFallback = _injectImageErrorFallback(
-      utf8.decode(widget.dataContext.data),
-    );
+    _htmlWithImageFallback = _injectImageErrorFallback(widget.data);
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..enableZoom(true)
