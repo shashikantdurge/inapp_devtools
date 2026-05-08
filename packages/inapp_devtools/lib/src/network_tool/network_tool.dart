@@ -11,9 +11,14 @@ const _kRequestRowHeight = 36.0;
 const _kSeparatorHeight = 1.0;
 
 class NetworkTool extends StatefulWidget with InAppDevToolsItem {
-  const NetworkTool({super.key, this.dataPreviewExtensions = const []});
+  const NetworkTool({
+    super.key,
+    this.dataPreviewExtensions = const [],
+    this.networkRequestFilters = const [],
+  });
 
   final List<DataPreviewExtension> dataPreviewExtensions;
+  final List<NetworkRequestFilter> networkRequestFilters;
 
   @override
   State<NetworkTool> createState() => _NetworkToolState();
@@ -53,6 +58,7 @@ class _NetworkToolState extends State<NetworkTool> {
             //Requests list page
             MaterialPage(
               child: _NetworkRequestListView(
+                requestFilters: widget.networkRequestFilters,
                 onItemTap: (data) {
                   setState(() {
                     _selectedHttpProfileData = data;
@@ -92,9 +98,12 @@ class _NetworkToolState extends State<NetworkTool> {
 }
 
 class _NetworkRequestListView extends StatefulWidget {
-  const _NetworkRequestListView({required this.onItemTap});
+  const _NetworkRequestListView({
+    required this.onItemTap,
+    required this.requestFilters,
+  });
   final void Function(HttpProfileData) onItemTap;
-
+  final List<NetworkRequestFilter> requestFilters;
   @override
   State<_NetworkRequestListView> createState() =>
       __NetworkRequestListViewState();
@@ -102,30 +111,62 @@ class _NetworkRequestListView extends StatefulWidget {
 
 class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   ScrollController scrollController = ScrollController();
-  StreamSubscription? _profileDataLengthStreamSubscription;
+  StreamSubscription? _profileDataStreamSubscription;
   bool _maintainScrollState = false;
-
+  final ValueNotifier<List<HttpProfileData>> _filteredProfileDataNotifier =
+      ValueNotifier([]);
+  int lastLength = 0;
   @override
   void initState() {
     super.initState();
-    _profileDataLengthStreamSubscription = HttpProfiler.instance
+    _profileDataStreamSubscription = HttpProfiler.instance
         .getProfileDataStream()
-        .map((event) => event.length)
-        .distinct()
-        .listen((_) => scrollToUserScrolledPosition());
+        .listen(_filterHttpProfileData);
+    _filterHttpProfileData(
+      HttpProfiler.instance.getProfileData() ?? [],
+      notify: false,
+    );
   }
 
-  void scrollToUserScrolledPosition() {
+  @override
+  void didUpdateWidget(covariant _NetworkRequestListView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.requestFilters != widget.requestFilters) {
+      _filterHttpProfileData(
+        HttpProfiler.instance.getProfileData() ?? [],
+        notify: false,
+      );
+    }
+  }
+
+  void _filterHttpProfileData(
+    List<HttpProfileData> data, {
+    bool notify = true,
+  }) {
+    _filteredProfileDataNotifier.value = data.where((request) {
+      return widget.requestFilters.every((filter) => filter.matches(request));
+    }).toList();
+
+    if (_filteredProfileDataNotifier.value.length case int newLength
+        when newLength != lastLength) {
+      scrollToUserScrolledPosition(newLength - lastLength);
+      lastLength = newLength;
+    }
+  }
+
+  void scrollToUserScrolledPosition([int increment = 1]) {
     if (_maintainScrollState) {
       scrollController.jumpTo(
-        scrollController.offset + _kSeparatorHeight + _kRequestRowHeight,
+        scrollController.offset +
+            (_kSeparatorHeight + _kRequestRowHeight) * increment,
       );
     }
   }
 
   @override
   void dispose() {
-    _profileDataLengthStreamSubscription?.cancel();
+    _profileDataStreamSubscription?.cancel();
+    _filteredProfileDataNotifier.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -141,31 +182,30 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
         }
         return false;
       },
-      child: StreamBuilder(
-        stream: HttpProfiler.instance.getProfileDataStream(),
-        initialData: HttpProfiler.instance.getProfileData(),
-        builder: (context, snapshot) {
-          final length = snapshot.data?.length ?? 0;
-          return Scrollbar(
+      child: Scrollbar(
+        controller: scrollController,
+        interactive: true,
+        trackVisibility: true,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: CustomScrollView(
             controller: scrollController,
-            interactive: true,
-            trackVisibility: true,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: CustomScrollView(
-                controller: scrollController,
-                reverse: true,
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    sliver: SliverList.separated(
+            reverse: true,
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                sliver: ValueListenableBuilder(
+                  valueListenable: _filteredProfileDataNotifier,
+                  builder: (context, filteredProfileData, child) {
+                    final length = filteredProfileData.length;
+                    return SliverList.separated(
                       separatorBuilder: (context, index) => Divider(
                         color: Colors.grey[850],
                         height: _kSeparatorHeight,
                       ),
                       itemCount: length,
                       itemBuilder: (context, index) {
-                        final data = snapshot.data![length - index - 1];
+                        final data = filteredProfileData[length - index - 1];
                         return ListenableBuilder(
                           listenable: data,
                           builder: (context, child) {
@@ -176,25 +216,25 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
                           },
                         );
                       },
-                    ),
-                  ),
-                  SliverFillRemaining(
-                    fillOverscroll: true,
-                    hasScrollBody: false,
-                    child: Container(
-                      alignment: Alignment.center,
-                      constraints: BoxConstraints(minHeight: 60),
-                      child: Text(
-                        'Start of the network logs',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
-          );
-        },
+              SliverFillRemaining(
+                fillOverscroll: true,
+                hasScrollBody: false,
+                child: Container(
+                  alignment: Alignment.center,
+                  constraints: BoxConstraints(minHeight: 60),
+                  child: Text(
+                    'Start of the network logs',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
