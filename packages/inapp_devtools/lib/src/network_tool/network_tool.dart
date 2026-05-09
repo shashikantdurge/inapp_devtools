@@ -50,6 +50,20 @@ class _NetworkToolState extends State<NetworkTool> {
   @override
   Widget build(BuildContext context) {
     return InAppDevToolsScaffold(
+      appBar: InAppDevToolsAppBar(
+        customActions: [
+          IconButton(
+            tooltip: 'Clear network logs',
+            onPressed: () {
+              HttpProfiler.instance.clear();
+              setState(() {
+                _selectedHttpProfileData = null;
+              });
+            },
+            icon: Icon(Icons.clear_all, color: Colors.white),
+          ),
+        ],
+      ),
       body: HeroControllerScope(
         controller: _heroController,
         child: Navigator(

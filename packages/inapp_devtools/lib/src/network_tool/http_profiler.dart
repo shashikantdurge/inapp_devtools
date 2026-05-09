@@ -32,6 +32,8 @@ abstract class HttpProfiler {
 
   List<HttpProfileData>? getProfileData();
 
+  void clear();
+
   void dispose() {}
 }
 
@@ -61,6 +63,11 @@ class HttpProfilerMemoryImpl implements HttpProfiler {
 
   @override
   List<HttpProfileData>? getProfileData() => _profileDataSubject.valueOrNull;
+
+  @override
+  void clear() {
+    _profileDataSubject.add([]);
+  }
 
   @override
   void dispose() {
