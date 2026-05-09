@@ -305,18 +305,38 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
     return const Color(0xFF9E9E9E);
   }
 
+  String getDisplayText() {
+    final uri = httpProfileData.uri;
+    final segs = uri.pathSegments;
+
+    if (!segs.any((s) => s.isNotEmpty)) {
+      return uri.toString();
+    }
+
+    StringBuffer result = StringBuffer();
+    if (segs.isNotEmpty && segs.last.isNotEmpty) {
+      result.write(segs.last);
+    } else if (segs.length >= 2) {
+      result.write(segs.sublist(segs.length - 2).join('/'));
+    } else {
+      return uri.toString();
+    }
+
+    if (uri.hasQuery) {
+      result.write('?${uri.query}');
+    }
+    if (uri.hasFragment) {
+      result.write('#${uri.fragment}');
+    }
+    return result.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = getColorByStatusCode(
       httpProfileData.response.statusCode,
     );
-    String displayUrl = httpProfileData.uri.path;
-    if (httpProfileData.uri.hasQuery) {
-      displayUrl += '?${httpProfileData.uri.query}';
-    }
-    if (httpProfileData.uri.hasFragment) {
-      displayUrl += '#${httpProfileData.uri.fragment}';
-    }
+    final displayUrl = getDisplayText();
 
     Widget child = SizedBox(
       height: _kRequestRowHeight,
@@ -373,7 +393,14 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Hero(tag: httpProfileData, child: child),
+      child: Hero(
+        tag: httpProfileData,
+        child: Tooltip(
+          message: httpProfileData.uri.toString(),
+          showDuration: Duration(seconds: 3),
+          child: child,
+        ),
+      ),
     );
   }
 }
