@@ -6,7 +6,7 @@ import 'dart:typed_data';
 
 import 'package:rxdart/transformers.dart';
 
-import '../http_profile_data.dart';
+import '../network_profile_data.dart';
 
 class IADNetworkHttpOverrides extends HttpOverrides {
   @override
@@ -17,7 +17,7 @@ class IADNetworkHttpOverrides extends HttpOverrides {
 }
 
 ///Provides the extension methods for the HttpProfileData class to handle the HTTP requests and responses from the IO package.
-extension on HttpProfileData {
+extension on NetworkProfileData {
   void appendRequestData(Uint8List data) {
     request.requestBody.addAll(data);
     log('appendRequestData');
@@ -158,7 +158,7 @@ class IADNetworkHttpClient implements HttpClient {
 
   @override
   Future<HttpClientRequest> openUrl(String method, Uri url) async {
-    final HttpProfileData profileData = HttpProfileData(
+    final NetworkProfileData profileData = NetworkProfileData(
       method: method,
       uri: url,
     );
@@ -300,10 +300,10 @@ class IADNetworkHttpClient implements HttpClient {
 
 ///A wrapper class for the HttpClientRequest class to handle the HTTP requests and responses from the IO package.
 ///
-///Sends the request data to [HttpProfileData] for profiling.
+///Sends the request data to [NetworkProfileData] for profiling.
 class IADNetworkHttpClientRequest implements HttpClientRequest {
   final HttpClientRequest _inner;
-  final HttpProfileData _profileData;
+  final NetworkProfileData _profileData;
   final Completer<IADNetworkHttpClientResponse> _responseCompleter =
       Completer<IADNetworkHttpClientResponse>();
   IADNetworkHttpClientRequest(this._inner, this._profileData) {
@@ -465,7 +465,7 @@ class IADNetworkHttpClientRequest implements HttpClientRequest {
 class IADNetworkHttpClientResponse extends Stream<List<int>>
     implements HttpClientResponse {
   final HttpClientResponse _inner;
-  final HttpProfileData _profileData;
+  final NetworkProfileData _profileData;
   IADNetworkHttpClientResponse(this._inner, this._profileData);
 
   @override

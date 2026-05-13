@@ -6,4 +6,4 @@ export 'src/network_tool/network_tool.dart' show NetworkTool;
 export 'src/analytics_tool/analytics_tool.dart' show AnalyticsTool;
 export 'src/analytics_tool/analytics_data_profiler.dart' show AnalyticsProfiler;
 export 'dart:io' show ContentType;
-export 'src/network_tool/network_request_filter.dart' show NetworkRequestFilter;
+export 'src/network_tool/network_request_filter.dart' show NetworkProfileDataFilter;

@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
-import 'package:inapp_devtools/src/network_tool/http_profile_data.dart';
-import 'package:inapp_devtools/src/network_tool/http_profiler.dart';
+import 'package:inapp_devtools/src/network_tool/network_profile_data.dart';
+import 'package:inapp_devtools/src/network_tool/network_profiler.dart';
 import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart';
 
 const _kRequestRowHeight = 36.0;
@@ -20,21 +20,21 @@ class NetworkTool extends StatefulWidget with InAppDevToolsItem {
   });
 
   final List<DataPreviewExtension> dataPreviewExtensions;
-  final List<NetworkRequestFilter> networkRequestFilters;
+  final List<NetworkProfileDataFilter> networkRequestFilters;
 
   @override
   String get label => 'Network';
 
   @override
   void initTool() {
-    HttpProfiler.ensureInitialized();
+    NetworkProfiler.ensureInitialized();
     HttpOverrides.global = IADNetworkHttpOverrides();
   }
 
   @override
   void disposeTool() {
     HttpOverrides.global = null;
-    HttpProfiler.instance = null;
+    NetworkProfiler.instance = null;
   }
 
   @override
@@ -44,14 +44,14 @@ class NetworkTool extends StatefulWidget with InAppDevToolsItem {
 class _NetworkToolState extends State<NetworkTool> {
   final HeroController _heroController = HeroController();
   late ToolStateNotifier _toolStateNotifier;
-  HttpProfileData? _selectedHttpProfileData;
+  NetworkProfileData? _selectedProfileData;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _toolStateNotifier = InAppDevTools.toolStateNotifier(context);
     final networkState = _toolStateNotifier.get<_NetworkToolState>() ?? this;
-    _selectedHttpProfileData = networkState._selectedHttpProfileData;
+    _selectedProfileData = networkState._selectedProfileData;
   }
 
   @override
@@ -69,9 +69,9 @@ class _NetworkToolState extends State<NetworkTool> {
           IconButton(
             tooltip: 'Clear network logs',
             onPressed: () {
-              HttpProfiler.instance.clear();
+              NetworkProfiler.instance.clear();
               setState(() {
-                _selectedHttpProfileData = null;
+                _selectedProfileData = null;
               });
             },
             icon: Icon(Icons.clear_all, color: Colors.white),
@@ -89,24 +89,24 @@ class _NetworkToolState extends State<NetworkTool> {
                 requestFilters: widget.networkRequestFilters,
                 onItemTap: (data) {
                   setState(() {
-                    _selectedHttpProfileData = data;
+                    _selectedProfileData = data;
                   });
                 },
               ),
             ),
 
             //Selected request details page
-            if (_selectedHttpProfileData != null)
+            if (_selectedProfileData != null)
               _FadeTransitionPage(
                 child: ListenableBuilder(
-                  listenable: _selectedHttpProfileData!,
+                  listenable: _selectedProfileData!,
                   builder: (_, _) {
-                    return _HttpProfileBodyWidget(
-                      httpProfileData: _selectedHttpProfileData!,
+                    return _NetworkProfileBodyWidget(
+                      profileData: _selectedProfileData!,
                       dataPreviewExtensions: widget.dataPreviewExtensions,
                       popCallback: () {
                         setState(() {
-                          _selectedHttpProfileData = null;
+                          _selectedProfileData = null;
                         });
                       },
                     );
@@ -116,7 +116,7 @@ class _NetworkToolState extends State<NetworkTool> {
           ],
           onDidRemovePage: (page) {
             setState(() {
-              _selectedHttpProfileData = null;
+              _selectedProfileData = null;
             });
           },
         ),
@@ -130,8 +130,8 @@ class _NetworkRequestListView extends StatefulWidget {
     required this.onItemTap,
     required this.requestFilters,
   });
-  final void Function(HttpProfileData) onItemTap;
-  final List<NetworkRequestFilter> requestFilters;
+  final void Function(NetworkProfileData) onItemTap;
+  final List<NetworkProfileDataFilter> requestFilters;
   @override
   State<_NetworkRequestListView> createState() =>
       __NetworkRequestListViewState();
@@ -141,17 +141,17 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   ScrollController scrollController = ScrollController();
   StreamSubscription? _profileDataStreamSubscription;
   bool _maintainScrollState = false;
-  final ValueNotifier<List<HttpProfileData>> _filteredProfileDataNotifier =
+  final ValueNotifier<List<NetworkProfileData>> _filteredProfileDataNotifier =
       ValueNotifier([]);
   int lastLength = 0;
   @override
   void initState() {
     super.initState();
-    _profileDataStreamSubscription = HttpProfiler.instance
+    _profileDataStreamSubscription = NetworkProfiler.instance
         .getProfileDataStream()
-        .listen(_filterHttpProfileData);
-    _filterHttpProfileData(
-      HttpProfiler.instance.getProfileData() ?? [],
+        .listen(_filterProfileData);
+    _filterProfileData(
+      NetworkProfiler.instance.getProfileData() ?? [],
       notify: false,
     );
   }
@@ -160,15 +160,15 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   void didUpdateWidget(covariant _NetworkRequestListView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.requestFilters != widget.requestFilters) {
-      _filterHttpProfileData(
-        HttpProfiler.instance.getProfileData() ?? [],
+      _filterProfileData(
+        NetworkProfiler.instance.getProfileData() ?? [],
         notify: false,
       );
     }
   }
 
-  void _filterHttpProfileData(
-    List<HttpProfileData> data, {
+  void _filterProfileData(
+    List<NetworkProfileData> data, {
     bool notify = true,
   }) {
     _filteredProfileDataNotifier.value = data.where((request) {
@@ -237,8 +237,8 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
                         return ListenableBuilder(
                           listenable: data,
                           builder: (context, child) {
-                            return _HttpProfileHeaderWidget(
-                              httpProfileData: data,
+                            return _NetworkProfileHeaderWidget(
+                              profileData: data,
                               onTap: () => widget.onItemTap(data),
                             );
                           },
@@ -268,10 +268,10 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   }
 }
 
-class _HttpProfileHeaderWidget extends StatelessWidget {
-  const _HttpProfileHeaderWidget({required this.httpProfileData, this.onTap});
+class _NetworkProfileHeaderWidget extends StatelessWidget {
+  const _NetworkProfileHeaderWidget({required this.profileData, this.onTap});
   final EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 8);
-  final HttpProfileData httpProfileData;
+  final NetworkProfileData profileData;
   final VoidCallback? onTap;
   Color getColorByMethod(String method) {
     switch (method.toUpperCase()) {
@@ -295,7 +295,7 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
   /// Postman-style status colors: 1xx blue, 2xx green, 3xx amber, 4xx orange, 5xx red.
   Color getColorByStatusCode(int? statusCode) {
     if (statusCode == null) {
-      if (httpProfileData.request.requestInProgress) {
+      if (profileData.request.requestInProgress) {
         return const Color(0xFF9E9E9E);
       } else {
         return const Color(0xFFFF6C37);
@@ -320,7 +320,7 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
   }
 
   String getDisplayText() {
-    final uri = httpProfileData.uri;
+    final uri = profileData.uri;
     final segs = uri.pathSegments;
 
     if (!segs.any((s) => s.isNotEmpty)) {
@@ -348,7 +348,7 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = getColorByStatusCode(
-      httpProfileData.response.statusCode,
+      profileData.response.statusCode,
     );
     final displayUrl = getDisplayText();
 
@@ -361,13 +361,13 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                httpProfileData.method.toUpperCase(),
+                profileData.method.toUpperCase(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
-                  color: getColorByMethod(httpProfileData.method),
+                  color: getColorByMethod(profileData.method),
                 ),
               ),
             ),
@@ -392,7 +392,7 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    httpProfileData.statusCodeWithValue,
+                    profileData.statusCodeWithValue,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: statusColor),
@@ -408,9 +408,9 @@ class _HttpProfileHeaderWidget extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Hero(
-        tag: httpProfileData,
+        tag: profileData,
         child: Tooltip(
-          message: httpProfileData.uri.toString(),
+          message: profileData.uri.toString(),
           showDuration: Duration(seconds: 3),
           child: child,
         ),
@@ -426,19 +426,19 @@ String readableSize(int size) {
   return '${(size / 1024).toStringAsFixed(2)} KB';
 }
 
-class _HttpProfileBodyWidget extends StatefulWidget {
-  const _HttpProfileBodyWidget({
-    required this.httpProfileData,
+class _NetworkProfileBodyWidget extends StatefulWidget {
+  const _NetworkProfileBodyWidget({
+    required this.profileData,
     this.popCallback,
     this.dataPreviewExtensions = const [],
   });
 
-  final HttpProfileData httpProfileData;
+  final NetworkProfileData profileData;
   final VoidCallback? popCallback;
   final List<DataPreviewExtension> dataPreviewExtensions;
 
   @override
-  State<_HttpProfileBodyWidget> createState() => __HttpProfileBodyWidgetState();
+  State<_NetworkProfileBodyWidget> createState() => _NetworkProfileBodyWidgetState();
 }
 
 class _Tab {
@@ -449,7 +449,7 @@ class _Tab {
   const _Tab({required this.tabView, required this.tab, required this.name});
 }
 
-class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
+class _NetworkProfileBodyWidgetState extends State<_NetworkProfileBodyWidget>
     with TickerProviderStateMixin {
   late ToolStateNotifier _toolStateNotifier;
   late TabController _tabController;
@@ -484,7 +484,7 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _toolStateNotifier = InAppDevTools.toolStateNotifier(context);
-    final oldState = _toolStateNotifier.get<__HttpProfileBodyWidgetState>();
+    final oldState = _toolStateNotifier.get<_NetworkProfileBodyWidgetState>();
     if (oldState != null) {
       final index = tabViews.indexWhere((tab) => tab.name == oldState.tabName);
       if (index != -1) {
@@ -494,7 +494,7 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
   }
 
   @override
-  void didUpdateWidget(covariant _HttpProfileBodyWidget oldWidget) {
+  void didUpdateWidget(covariant _NetworkProfileBodyWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     _initializeTabViews();
     if (_tabController.length != tabViews.length) {
@@ -514,11 +514,11 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
 
   void _initializeTabViews() {
     ContentType? requestContentType, responseContentType;
-    if (widget.httpProfileData.request.headers?['content-type']?.firstOrNull
+    if (widget.profileData.request.headers?['content-type']?.firstOrNull
         case String requestContentTypeString) {
       requestContentType = ContentType.parse(requestContentTypeString);
     }
-    if (widget.httpProfileData.response.headers?['content-type']?.firstOrNull
+    if (widget.profileData.response.headers?['content-type']?.firstOrNull
         case String responseContentTypeString) {
       responseContentType = ContentType.parse(responseContentTypeString);
     }
@@ -528,7 +528,7 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
         tab: Tab(text: 'Overview', height: tabHeight),
         name: 'Overview',
         tabView: _TabViewOverview(
-          httpProfileData: widget.httpProfileData,
+          profileData: widget.profileData,
           tabName: 'Overview',
         ),
       ),
@@ -538,40 +538,40 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
         tab: Tab(text: 'Headers', height: tabHeight),
         name: 'Headers',
         tabView: _TabViewHeaders(
-          httpProfileData: widget.httpProfileData,
+          profileData: widget.profileData,
           tabName: 'Headers',
         ),
       ),
 
       //Request tab
-      if (widget.httpProfileData.request.requestBody.isNotEmpty &&
-          !widget.httpProfileData.request.requestInProgress)
+      if (widget.profileData.request.requestBody.isNotEmpty &&
+          !widget.profileData.request.requestInProgress)
         _Tab(
           tab: Tab(text: 'Request', height: tabHeight),
           name: 'Request',
           tabView: _DataPreviewTabView(
             tabName: 'Request',
-            data: widget.httpProfileData.request.requestBody,
+            data: widget.profileData.request.requestBody,
             contentType: requestContentType,
             dataPreviewExtensions: widget.dataPreviewExtensions,
           ),
         ),
 
       //Response tab
-      if (widget.httpProfileData.response.responseBody.isNotEmpty &&
-          widget.httpProfileData.response.responseInProgress == false)
+      if (widget.profileData.response.responseBody.isNotEmpty &&
+          widget.profileData.response.responseInProgress == false)
         _Tab(
           tab: Tab(text: 'Response', height: tabHeight),
           name: 'Response',
           tabView: _DataPreviewTabView(
             tabName: 'Response',
-            data: widget.httpProfileData.response.responseBody,
+            data: widget.profileData.response.responseBody,
             contentType: responseContentType,
             dataPreviewExtensions: widget.dataPreviewExtensions,
           ),
         ),
 
-      if (widget.httpProfileData.request.error case Object error)
+      if (widget.profileData.request.error case Object error)
         _Tab(
           tab: Tab(text: 'Error', height: tabHeight),
           name: 'Error',
@@ -605,8 +605,8 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
             color: t.appBarBackgroundColor.withValues(alpha: 0.5),
             child: Column(
               children: [
-                _HttpProfileHeaderWidget(
-                  httpProfileData: widget.httpProfileData,
+                _NetworkProfileHeaderWidget(
+                  profileData: widget.profileData,
                   onTap: widget.popCallback,
                 ),
                 Row(
@@ -698,10 +698,10 @@ class __HttpProfileBodyWidgetState extends State<_HttpProfileBodyWidget>
 
 class _TabViewOverview extends StatefulWidget {
   const _TabViewOverview({
-    required this.httpProfileData,
+    required this.profileData,
     required this.tabName,
   });
-  final HttpProfileData httpProfileData;
+  final NetworkProfileData profileData;
   final String tabName;
 
   @override
@@ -720,7 +720,7 @@ class _TabViewOverviewState extends State<_TabViewOverview>
   }
 
   void copyOverviewContent() {
-    final data = widget.httpProfileData;
+    final data = widget.profileData;
     final firstLine = '${data.method.toUpperCase()} ${data.uri}';
 
     final lines = <String>[firstLine, 'Status: ${data.statusCodeWithValue}'];
@@ -757,11 +757,11 @@ class _TabViewOverviewState extends State<_TabViewOverview>
     Duration? responseTime;
     DateTime? startTime;
     DateTime? endTime;
-    if (widget.httpProfileData.request.requestStartedAt
+    if (widget.profileData.request.requestStartedAt
         case DateTime requestStartedAt) {
       startTime = requestStartedAt;
     }
-    if (widget.httpProfileData.response.responseEndedAt
+    if (widget.profileData.response.responseEndedAt
         case DateTime responseEndedAt) {
       endTime = responseEndedAt;
     }
@@ -774,17 +774,17 @@ class _TabViewOverviewState extends State<_TabViewOverview>
         children: [
           _KeyValueRowWidget(
             keyWidget: Text('Method'),
-            valueWidget: Text(widget.httpProfileData.method.toUpperCase()),
+            valueWidget: Text(widget.profileData.method.toUpperCase()),
           ),
           _KeyValueRowWidget(
             keyWidget: Text('Request URL'),
-            valueWidget: Text(widget.httpProfileData.uri.toString()),
+            valueWidget: Text(widget.profileData.uri.toString()),
           ),
           _KeyValueRowWidget(
             keyWidget: Text('Status'),
-            valueWidget: Text(widget.httpProfileData.statusCodeWithValue),
+            valueWidget: Text(widget.profileData.statusCodeWithValue),
           ),
-          if (widget.httpProfileData.response.headers case {
+          if (widget.profileData.response.headers case {
             'content-type': [var contentType],
           })
             _KeyValueRowWidget(
@@ -814,7 +814,7 @@ class _TabViewOverviewState extends State<_TabViewOverview>
             child: TextButton.icon(
               onPressed: () {
                 Clipboard.setData(
-                  ClipboardData(text: widget.httpProfileData.toCurl()),
+                  ClipboardData(text: widget.profileData.toCurl()),
                 );
               },
               icon: Icon(Icons.copy),
@@ -830,12 +830,12 @@ class _TabViewOverviewState extends State<_TabViewOverview>
 //################################## Headers tab widget ###################################
 
 class _TabViewHeaders extends StatefulWidget {
-  const _TabViewHeaders({required this.httpProfileData, required this.tabName});
+  const _TabViewHeaders({required this.profileData, required this.tabName});
   final String tabName;
-  final HttpProfileData httpProfileData;
+  final NetworkProfileData profileData;
 
   void copyHeadersContent() {
-    final d = httpProfileData;
+    final d = profileData;
     final buffer = StringBuffer()
       ..writeln('${d.method.toUpperCase()} ${d.uri}')
       ..writeln('Status Code: ${d.statusCodeWithValue}');
@@ -916,20 +916,20 @@ class _TabViewHeadersState extends State<_TabViewHeaders>
             children: [
               _KeyValueRowWidget(
                 keyWidget: Text('Method'),
-                valueWidget: Text(widget.httpProfileData.method.toUpperCase()),
+                valueWidget: Text(widget.profileData.method.toUpperCase()),
               ),
               _KeyValueRowWidget(
                 keyWidget: Text('Request URL'),
-                valueWidget: Text(widget.httpProfileData.uri.toString()),
+                valueWidget: Text(widget.profileData.uri.toString()),
               ),
               _KeyValueRowWidget(
                 keyWidget: Text('Status Code'),
-                valueWidget: Text(widget.httpProfileData.statusCodeWithValue),
+                valueWidget: Text(widget.profileData.statusCodeWithValue),
               ),
             ],
           ),
 
-          if (widget.httpProfileData.response.headers
+          if (widget.profileData.response.headers
               case Map<String, List<String>> headers)
             ExpansionTile(
               title: Text('Response Headers'),
@@ -948,7 +948,7 @@ class _TabViewHeadersState extends State<_TabViewHeaders>
               ],
             ),
 
-          if (widget.httpProfileData.request.headers
+          if (widget.profileData.request.headers
               case Map<String, List<String>> headers)
             ExpansionTile(
               title: Text('Request Headers'),

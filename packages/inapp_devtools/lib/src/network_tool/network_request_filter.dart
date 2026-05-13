@@ -1,64 +1,65 @@
-import 'package:inapp_devtools/src/network_tool/http_profile_data.dart';
+import 'package:inapp_devtools/src/network_tool/network_profile_data.dart';
 
-typedef NetworkRequestFilterPredicate =
-    bool Function(HttpProfileData profileData);
+typedef NetworkProfileDataFilterPredicate =
+    bool Function(NetworkProfileData profileData);
 
-abstract class NetworkRequestFilter {
+abstract class NetworkProfileDataFilter {
   String get label;
-  final NetworkRequestFilterPredicate predicate;
 
-  const NetworkRequestFilter._({required this.predicate});
+  final NetworkProfileDataFilterPredicate predicate;
 
-  factory NetworkRequestFilter.includeDomains(Set<String> domains) {
-    return DomainNetworkRequestFilter(
+  const NetworkProfileDataFilter._({required this.predicate});
+
+  factory NetworkProfileDataFilter.includeDomains(Set<String> domains) {
+    return DomainNetworkProfileDataFilter(
       domains.map((e) => e.toLowerCase()).toSet(),
       true,
     );
   }
 
-  factory NetworkRequestFilter.excludeDomains(Set<String> domains) {
-    return DomainNetworkRequestFilter(
+  factory NetworkProfileDataFilter.excludeDomains(Set<String> domains) {
+    return DomainNetworkProfileDataFilter(
       domains.map((e) => e.toLowerCase()).toSet(),
       false,
     );
   }
 
-  factory NetworkRequestFilter.includeMethods(Set<String> methods) {
-    return MethodNetworkRequestFilter(
+  factory NetworkProfileDataFilter.includeMethods(Set<String> methods) {
+    return MethodNetworkProfileDataFilter(
       methods.map((e) => e.toLowerCase()).toSet(),
       true,
     );
   }
 
-  factory NetworkRequestFilter.excludeMethods(Set<String> methods) {
-    return MethodNetworkRequestFilter(
+  factory NetworkProfileDataFilter.excludeMethods(Set<String> methods) {
+    return MethodNetworkProfileDataFilter(
       methods.map((e) => e.toLowerCase()).toSet(),
       false,
     );
   }
 
-  factory NetworkRequestFilter.includeStatusCodes(Set<int> statusCodes) {
-    return StatusCodeNetworkRequestFilter(statusCodes, true);
+  factory NetworkProfileDataFilter.includeStatusCodes(Set<int> statusCodes) {
+    return StatusCodeNetworkProfileDataFilter(statusCodes, true);
   }
 
-  factory NetworkRequestFilter.excludeStatusCodes(Set<int> statusCodes) {
-    return StatusCodeNetworkRequestFilter(statusCodes, false);
+  factory NetworkProfileDataFilter.excludeStatusCodes(Set<int> statusCodes) {
+    return StatusCodeNetworkProfileDataFilter(statusCodes, false);
   }
 
-  factory NetworkRequestFilter.custom({
+  factory NetworkProfileDataFilter.custom({
     required String label,
-    required NetworkRequestFilterPredicate predicate,
+    required NetworkProfileDataFilterPredicate predicate,
   }) {
-    return CustomNetworkRequestFilter(label: label, predicate: predicate);
+    return CustomNetworkProfileDataFilter(label: label, predicate: predicate);
   }
 
-  bool matches(HttpProfileData profileData) {
+  bool matches(NetworkProfileData profileData) {
     return predicate(profileData);
   }
 }
 
-final class DomainNetworkRequestFilter extends NetworkRequestFilter {
-  DomainNetworkRequestFilter(this.domains, this.include)
+final class DomainNetworkProfileDataFilter extends NetworkProfileDataFilter {
+  DomainNetworkProfileDataFilter(this.domains, this.include)
     : super._(
         predicate: include
             ? (profileData) {
@@ -68,6 +69,7 @@ final class DomainNetworkRequestFilter extends NetworkRequestFilter {
                 return !domains.contains(profileData.uri.host.toLowerCase());
               },
       );
+
   @override
   String get label => 'Domain';
 
@@ -76,8 +78,8 @@ final class DomainNetworkRequestFilter extends NetworkRequestFilter {
   final Set<String> domains;
 }
 
-final class MethodNetworkRequestFilter extends NetworkRequestFilter {
-  MethodNetworkRequestFilter(this.methods, this.include)
+final class MethodNetworkProfileDataFilter extends NetworkProfileDataFilter {
+  MethodNetworkProfileDataFilter(this.methods, this.include)
     : super._(
         predicate: include
             ? (profileData) {
@@ -87,6 +89,7 @@ final class MethodNetworkRequestFilter extends NetworkRequestFilter {
                 return !methods.contains(profileData.method.toLowerCase());
               },
       );
+
   @override
   String get label => 'Method';
 
@@ -95,8 +98,9 @@ final class MethodNetworkRequestFilter extends NetworkRequestFilter {
   final Set<String> methods;
 }
 
-final class StatusCodeNetworkRequestFilter extends NetworkRequestFilter {
-  StatusCodeNetworkRequestFilter(this.statusCodes, this.include)
+final class StatusCodeNetworkProfileDataFilter
+    extends NetworkProfileDataFilter {
+  StatusCodeNetworkProfileDataFilter(this.statusCodes, this.include)
     : super._(
         predicate: include
             ? (profileData) {
@@ -106,6 +110,7 @@ final class StatusCodeNetworkRequestFilter extends NetworkRequestFilter {
                 return !statusCodes.contains(profileData.response.statusCode);
               },
       );
+
   @override
   String get label => 'Status Code';
 
@@ -114,8 +119,8 @@ final class StatusCodeNetworkRequestFilter extends NetworkRequestFilter {
   final Set<int?> statusCodes;
 }
 
-class CustomNetworkRequestFilter extends NetworkRequestFilter {
-  const CustomNetworkRequestFilter({
+class CustomNetworkProfileDataFilter extends NetworkProfileDataFilter {
+  const CustomNetworkProfileDataFilter({
     required super.predicate,
     required this.label,
   }) : super._();
