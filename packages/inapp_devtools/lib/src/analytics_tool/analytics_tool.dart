@@ -36,6 +36,16 @@ class AnalyticsTool extends StatefulWidget with InAppDevToolsItem {
   String get label => 'Analytics';
 
   @override
+  void initTool() {
+    AnalyticsProfiler.ensureInitialized();
+  }
+
+  @override
+  void disposeTool() {
+    AnalyticsProfiler.instance = null;
+  }
+
+  @override
   State<AnalyticsTool> createState() => _AnalyticsToolState();
 }
 

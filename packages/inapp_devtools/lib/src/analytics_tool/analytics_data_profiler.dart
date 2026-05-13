@@ -15,7 +15,7 @@ abstract class AnalyticsProfiler {
     return _instance!;
   }
 
-  static set instance(AnalyticsProfiler value) {
+  static set instance(AnalyticsProfiler? value) {
     _instance?.dispose();
     _instance = value;
   }
