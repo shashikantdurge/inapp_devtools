@@ -10,7 +10,6 @@ import 'package:inapp_devtools/src/network_tool/network_profiler.dart';
 import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart';
 
 const _kRequestRowHeight = 36.0;
-const _kSeparatorHeight = 1.0;
 
 class NetworkTool extends StatefulWidget with InAppDevToolsItem {
   const NetworkTool({
@@ -140,10 +139,31 @@ class _NetworkRequestListView extends StatefulWidget {
 class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   ScrollController scrollController = ScrollController();
   StreamSubscription? _profileDataStreamSubscription;
-  bool _maintainScrollState = false;
+  bool _autoScrollToEnd = true;
+  bool get autoScrollToEnd => _autoScrollToEnd;
+
   final ValueNotifier<List<NetworkProfileData>> _filteredProfileDataNotifier =
       ValueNotifier([]);
+  final unreadProfileDataCountNotifier = ValueNotifier<int>(0);
   int lastLength = 0;
+  set autoScrollToEnd(bool value) {
+    if (value == _autoScrollToEnd) return;
+    _autoScrollToEnd = value;
+    if (value) {
+      unreadProfileDataCountNotifier.value = 0;
+    }
+  }
+
+  double get lastScrollOffset {
+    final totalContentExtent =
+        _filteredProfileDataNotifier.value.length * _kRequestRowHeight;
+    if (!scrollController.hasClients ||
+        totalContentExtent <= scrollController.position.extentInside) {
+      return 0.0;
+    }
+    return totalContentExtent - scrollController.position.extentInside;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -167,27 +187,46 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
     }
   }
 
-  void _filterProfileData(
-    List<NetworkProfileData> data, {
-    bool notify = true,
-  }) {
+  void _filterProfileData(List<NetworkProfileData> data, {bool notify = true}) {
     _filteredProfileDataNotifier.value = data.where((request) {
       return widget.requestFilters.every((filter) => filter.matches(request));
     }).toList();
 
     if (_filteredProfileDataNotifier.value.length case int newLength
         when newLength != lastLength) {
-      scrollToUserScrolledPosition(newLength - lastLength);
+      if (autoScrollToEnd || newLength == 0) {
+        _ensureLastItemVisible();
+      } else {
+        unreadProfileDataCountNotifier.value += newLength - lastLength;
+      }
       lastLength = newLength;
     }
   }
 
-  void scrollToUserScrolledPosition([int increment = 1]) {
-    if (_maintainScrollState) {
-      scrollController.jumpTo(
-        scrollController.offset +
-            (_kSeparatorHeight + _kRequestRowHeight) * increment,
+  void _ensureLastItemVisible() {
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
+        lastScrollOffset,
+        duration: Duration(milliseconds: 160),
+        curve: Curves.easeInOut,
       );
+    }
+    autoScrollToEnd = true;
+  }
+
+  void _onLayoutSizeChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (autoScrollToEnd) {
+        _ensureLastItemVisible();
+      }
+    });
+  }
+
+  void _onUserScroll(UserScrollNotification notification) {
+    if (notification.metrics.extentAfter > 0) {
+      autoScrollToEnd = false;
+    } else {
+      autoScrollToEnd = true;
     }
   }
 
@@ -195,84 +234,116 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   void dispose() {
     _profileDataStreamSubscription?.cancel();
     _filteredProfileDataNotifier.dispose();
+    unreadProfileDataCountNotifier.dispose();
     scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<UserScrollNotification>(
-      onNotification: (notification) {
-        if (notification.metrics.extentBefore > 0) {
-          _maintainScrollState = true;
-        } else {
-          _maintainScrollState = false;
-        }
-        return false;
-      },
-      child: Scrollbar(
-        controller: scrollController,
-        interactive: true,
-        trackVisibility: true,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: CustomScrollView(
-            controller: scrollController,
-            reverse: true,
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                sliver: ValueListenableBuilder(
-                  valueListenable: _filteredProfileDataNotifier,
-                  builder: (context, filteredProfileData, child) {
-                    final length = filteredProfileData.length;
-                    return SliverList.separated(
-                      separatorBuilder: (context, index) => Divider(
-                        color: Colors.grey[850],
-                        height: _kSeparatorHeight,
+    const decoration = BoxDecoration(
+      border: Border(bottom: BorderSide(color: Color(0xFF303030), width: 1)),
+    );
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Scrollbar(
+          controller: scrollController,
+          interactive: true,
+          trackVisibility: true,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: NotificationListener<SizeChangedLayoutNotification>(
+              onNotification: (_) {
+                _onLayoutSizeChanged();
+                return true;
+              },
+              child: NotificationListener<UserScrollNotification>(
+                onNotification: (notification) {
+                  _onUserScroll(notification);
+                  return false;
+                },
+                child: SizeChangedLayoutNotifier(
+                  child: CustomScrollView(
+                    controller: scrollController,
+                    slivers: [
+                      ValueListenableBuilder(
+                        valueListenable: _filteredProfileDataNotifier,
+                        builder: (context, filteredProfileData, child) {
+                          final length = filteredProfileData.length;
+                          return SliverFixedExtentList.builder(
+                            itemExtent: _kRequestRowHeight,
+                            itemCount: length,
+                            itemBuilder: (context, index) {
+                              final data = filteredProfileData[index];
+
+                              return ListenableBuilder(
+                                listenable: data,
+                                builder: (context, child) {
+                                  return _NetworkProfileHeaderWidget(
+                                    profileData: data,
+                                    onTap: () => widget.onItemTap(data),
+                                    decoration: decoration,
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
                       ),
-                      itemCount: length,
-                      itemBuilder: (context, index) {
-                        final data = filteredProfileData[length - index - 1];
-                        return ListenableBuilder(
-                          listenable: data,
-                          builder: (context, child) {
-                            return _NetworkProfileHeaderWidget(
-                              profileData: data,
-                              onTap: () => widget.onItemTap(data),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              SliverFillRemaining(
-                fillOverscroll: true,
-                hasScrollBody: false,
-                child: Container(
-                  alignment: Alignment.center,
-                  constraints: BoxConstraints(minHeight: 60),
-                  child: Text(
-                    'Start of the network logs',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: ValueListenableBuilder(
+            valueListenable: unreadProfileDataCountNotifier,
+            builder: (context, newProfileDataCount, _) {
+              if (newProfileDataCount == 0) {
+                return const SizedBox.shrink();
+              }
+              return FilledButton(
+                onPressed: _ensureLastItemVisible,
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.all(
+                    Theme.of(context).colorScheme.secondary,
+                  ),
+                  padding: WidgetStateProperty.all(
+                    EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ),
+                child: Row(
+                  spacing: 4,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_downward_rounded),
+                    Text(newProfileDataCount.toString()),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _NetworkProfileHeaderWidget extends StatelessWidget {
-  const _NetworkProfileHeaderWidget({required this.profileData, this.onTap});
+  const _NetworkProfileHeaderWidget({
+    required this.profileData,
+    this.onTap,
+    this.decoration = const BoxDecoration(),
+  });
   final EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 8);
   final NetworkProfileData profileData;
   final VoidCallback? onTap;
+  final Decoration decoration;
   Color getColorByMethod(String method) {
     switch (method.toUpperCase()) {
       case 'GET':
@@ -287,8 +358,14 @@ class _NetworkProfileHeaderWidget extends StatelessWidget {
         return const Color(0xFF6C71C4); // Postman Purple
       case 'HEAD':
         return const Color(0xFFB58900); // Postman Yellow
+      case 'OPTIONS':
+        return const Color(0xFF6C71C4); // Postman Purple
+      case 'CONNECT':
+        return const Color(0xFFB58900); // Postman Yellow
+      case 'TRACE':
+        return const Color(0xFF6C71C4); // Postman Purple
       default:
-        return Colors.black;
+        return Colors.white;
     }
   }
 
@@ -347,60 +424,61 @@ class _NetworkProfileHeaderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = getColorByStatusCode(
-      profileData.response.statusCode,
-    );
+    final statusColor = getColorByStatusCode(profileData.response.statusCode);
     final displayUrl = getDisplayText();
 
-    Widget child = SizedBox(
-      height: _kRequestRowHeight,
-      child: Padding(
-        padding: padding,
-        child: Row(
-          spacing: 8,
-          children: [
-            Expanded(
-              child: Text(
-                profileData.method.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: getColorByMethod(profileData.method),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 7,
-              child: Text(
-                displayUrl,
-                style: TextStyle(fontSize: 12),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    profileData.statusCodeWithValue,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: statusColor),
+    Widget child = DecoratedBox(
+      decoration: decoration,
+      child: SizedBox(
+        height: _kRequestRowHeight,
+        child: Padding(
+          padding: padding,
+          child: Row(
+            spacing: 8,
+            children: [
+              Expanded(
+                child: Text(
+                  profileData.method.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: getColorByMethod(profileData.method),
                   ),
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                flex: 7,
+                child: Text(
+                  displayUrl,
+                  style: TextStyle(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      profileData.statusCodeWithValue,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: statusColor),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -420,10 +498,20 @@ class _NetworkProfileHeaderWidget extends StatelessWidget {
 }
 
 String readableSize(int size) {
+  var bytes = 1024;
   if (size < 1024) {
     return '$size B';
   }
-  return '${(size / 1024).toStringAsFixed(2)} KB';
+  bytes *= 1024;
+  if (size < bytes) {
+    return '${(size / 1024).toStringAsFixed(2)} KB';
+  }
+  bytes *= 1024;
+  if (size < bytes) {
+    return '${(size / 1024 / 1024).toStringAsFixed(2)} MB';
+  }
+  bytes *= 1024;
+  return '${(size / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
 }
 
 class _NetworkProfileBodyWidget extends StatefulWidget {
@@ -438,7 +526,8 @@ class _NetworkProfileBodyWidget extends StatefulWidget {
   final List<DataPreviewExtension> dataPreviewExtensions;
 
   @override
-  State<_NetworkProfileBodyWidget> createState() => _NetworkProfileBodyWidgetState();
+  State<_NetworkProfileBodyWidget> createState() =>
+      _NetworkProfileBodyWidgetState();
 }
 
 class _Tab {
@@ -697,10 +786,7 @@ class _NetworkProfileBodyWidgetState extends State<_NetworkProfileBodyWidget>
 //################################## Overview tab widget ###################################
 
 class _TabViewOverview extends StatefulWidget {
-  const _TabViewOverview({
-    required this.profileData,
-    required this.tabName,
-  });
+  const _TabViewOverview({required this.profileData, required this.tabName});
   final NetworkProfileData profileData;
   final String tabName;
 
@@ -749,7 +835,7 @@ class _TabViewOverviewState extends State<_TabViewOverview>
     }
 
     final content = lines.join('\n');
-    debugPrint('Copy content: $content');
+    Clipboard.setData(ClipboardData(text: content));
   }
 
   @override

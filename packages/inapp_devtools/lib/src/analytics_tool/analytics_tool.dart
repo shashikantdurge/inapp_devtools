@@ -68,14 +68,15 @@ class _AnalyticsToolState extends State<AnalyticsTool> {
   }
 
   double get lastScrollOffset {
-    final endPixel = _profileDataNotifier.value.fold(
+    final totalContentHeight = _profileDataNotifier.value.fold<double>(
       0.0,
-      (previousValue, element) => previousValue + element.height,
+      (sum, item) => sum + item.height,
     );
-    if (_scrollController.position.extentTotal > endPixel) {
+    if (!_scrollController.hasClients ||
+        totalContentHeight <= _scrollController.position.extentInside) {
       return 0.0;
     }
-    return endPixel - _scrollController.position.extentInside;
+    return totalContentHeight - _scrollController.position.extentInside;
   }
 
   void _ensureLastItemVisible() {
