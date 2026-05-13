@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:iad_image_data_preview/iad_image_data_preview.dart';
 import 'package:iad_json_data_preview/iad_json_data_preview.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
+import 'analytics_playground_screen.dart';
 import 'api_playground_screen.dart';
 import 'http_test_framework.dart';
 
@@ -16,9 +17,10 @@ const _postmanSuccess = Color(0xFF4CAF50);
 const _postmanBorder = Color(0xFF404040);
 
 void main() {
-  FlutterError.onError = (details) {
-    print('FlutterError: ${details.exceptionAsString()}');
-  };
+  // FlutterError.onError = (details) {
+  //   print('FlutterError: ${details.exceptionAsString()}');
+  // };
+  AnalyticsProfiler.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -29,6 +31,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return InAppDevTools(
       tools: [
+        AnalyticsTool(),
         NetworkTool(
           dataPreviewExtensions: [IadJsonDataPreview(), IadImageDataPreview()],
         ),
@@ -313,6 +316,17 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Analytics playground',
+            icon: const Icon(Icons.analytics_outlined),
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (context) => const AnalyticsPlaygroundScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'API Playground',
             icon: const Icon(Icons.play_circle_outline),
