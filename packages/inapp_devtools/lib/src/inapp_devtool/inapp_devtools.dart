@@ -11,6 +11,7 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:inapp_devtools/src/network_tool/network_tool.dart';
 import 'package:inapp_devtools/src/network_tool/http_profiler.dart'
     show HttpProfiler;
@@ -56,7 +57,7 @@ enum InAppDevToolsPanelWindowMode {
 class InAppDevTools extends StatefulWidget {
   InAppDevTools({
     super.key,
-    this.tools = const [NetworkTool()],
+    this.tools = const [NetworkTool(), AnalyticsTool()],
     this.initialSelectedToolIndex = 0,
     this.theme,
     this.color,
@@ -106,6 +107,7 @@ class InAppDevTools extends StatefulWidget {
   static void ensureInitialized() {
     // Initialize the network tools
     HttpProfiler.ensureInitialized();
+    AnalyticsProfiler.ensureInitialized();
     HttpOverrides.global = IADNetworkHttpOverrides();
   }
 
