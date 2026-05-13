@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return InAppDevTools(
       tools: [
-        AnalyticsTool(),
+        AnalyticsTool(key: ValueKey('4')),
         NetworkTool(
           dataPreviewExtensions: [IadJsonDataPreview(), IadImageDataPreview()],
         ),
@@ -747,10 +747,6 @@ class MyCustomTool extends StatefulWidget with InAppDevToolsItem {
 
   @override
   String get label => 'Custom Tool';
-
-  @override
-  Widget? get labelWidget =>
-      Row(children: [Icon(Icons.code), Text('Custom Tool')]);
 }
 
 class _MyCustomToolState extends State<MyCustomTool> {

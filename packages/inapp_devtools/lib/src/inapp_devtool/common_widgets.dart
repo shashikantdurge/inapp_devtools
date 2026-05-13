@@ -183,8 +183,7 @@ class _InAppDevToolsAppBarState extends State<InAppDevToolsAppBar> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                selectedTool.labelWidget ??
-                    Text(selectedTool.label, style: t.appBarLabelStyle),
+                Text(selectedTool.label, style: t.appBarLabelStyle),
                 const SizedBox(width: 4),
                 Icon(Icons.arrow_right, size: 20, color: t.appBarIconColor),
               ],
@@ -250,12 +249,10 @@ class InAppDevToolsPickerOverlay extends StatelessWidget {
                     },
                     behavior: HitTestBehavior.opaque,
                     child: Center(
-                      child:
-                          tools[index].labelWidget ??
-                          Text(
-                            tools[index].label,
-                            style: t.pickerItemLabelStyle,
-                          ),
+                      child: Text(
+                        tools[index].label,
+                        style: t.pickerItemLabelStyle,
+                      ),
                     ),
                   );
                 },

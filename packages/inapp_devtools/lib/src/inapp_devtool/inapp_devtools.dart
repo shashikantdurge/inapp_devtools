@@ -5,20 +5,12 @@
 /// descendants to read [InAppDevToolsController] and drive [InAppDevToolsPanelWindowMode].
 library;
 
-import 'dart:io';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
-import 'package:inapp_devtools/src/network_tool/network_tool.dart';
-import 'package:inapp_devtools/src/network_tool/http_profiler.dart'
-    show HttpProfiler;
-import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart'
-    show IADNetworkHttpOverrides;
-
-import 'theme.dart';
 
 /// A mixin for widgets which can be used as a tool in the in-app devtools [InAppDevTools.tools].
 ///
@@ -36,7 +28,8 @@ import 'theme.dart';
 /// ```
 mixin InAppDevToolsItem on Widget {
   String get label;
-  Widget? get labelWidget => null;
+  void initTool() {}
+  void disposeTool() {}
 }
 
 /// Defines the different window states of the in-app devtools panel.
@@ -104,13 +97,6 @@ class InAppDevTools extends StatefulWidget {
         .notifier!;
   }
 
-  static void ensureInitialized() {
-    // Initialize the network tools
-    HttpProfiler.ensureInitialized();
-    AnalyticsProfiler.ensureInitialized();
-    HttpOverrides.global = IADNetworkHttpOverrides();
-  }
-
   @override
   State<InAppDevTools> createState() => _InAppDevToolsState();
 }
@@ -122,10 +108,58 @@ class _InAppDevToolsState extends State<InAppDevTools> {
   @override
   void initState() {
     super.initState();
-    InAppDevTools.ensureInitialized();
     _controller
       ..setTools(widget.tools)
       ..setSelectedToolIndex(widget.initialSelectedToolIndex);
+    _initTools();
+  }
+
+  void _initTools() {
+    for (final tool in widget.tools) {
+      tool.initTool();
+    }
+  }
+
+  void _disposeTools() {
+    for (final tool in widget.tools) {
+      tool.disposeTool();
+    }
+  }
+
+  /// Updates the initialized and disposed state of tools when the tool list changes.
+  /// Initializes any new tools that were not present in the previous list,
+  /// and disposes any tools from the old list that are no longer present in the new list.
+  void _updateTools({
+    required List<InAppDevToolsItem> oldTools,
+    required List<InAppDevToolsItem> newTools,
+  }) {
+    // Find new tools that need to be initialized (not present in oldTools by key and runtimeType).
+    final uninitializedNewTools = newTools.where((newTool) {
+      return !oldTools.any(
+        (oldTool) =>
+            oldTool.runtimeType == newTool.runtimeType &&
+            oldTool.key == newTool.key,
+      );
+    });
+
+    // Find old tools that need to be disposed (not present in newTools by key and runtimeType).
+    final toolsToDispose = oldTools.where((oldTool) {
+      return !newTools.any(
+        (newTool) =>
+            newTool.runtimeType == oldTool.runtimeType &&
+            newTool.key == oldTool.key,
+      );
+    });
+
+    // Dispose old tools no longer present.
+    for (final tool in toolsToDispose) {
+      tool.disposeTool();
+    }
+
+    // Initialize new tools newly added.
+    for (final tool in uninitializedNewTools) {
+      tool.initTool();
+    }
   }
 
   @override
@@ -134,6 +168,7 @@ class _InAppDevToolsState extends State<InAppDevTools> {
     if (!DeepCollectionEquality().equals(oldWidget.tools, widget.tools)) {
       _controller.setTools(widget.tools);
     }
+    _updateTools(oldTools: oldWidget.tools, newTools: widget.tools);
   }
 
   Widget _buildPanelContent(BuildContext context) {
@@ -176,6 +211,7 @@ class _InAppDevToolsState extends State<InAppDevTools> {
   @override
   void dispose() {
     _controller.dispose();
+    _disposeTools();
     super.dispose();
   }
 

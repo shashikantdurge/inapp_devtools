@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,7 @@ import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
 import 'package:inapp_devtools/src/network_tool/http_profile_data.dart';
 import 'package:inapp_devtools/src/network_tool/http_profiler.dart';
+import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart';
 
 const _kRequestRowHeight = 36.0;
 const _kSeparatorHeight = 1.0;
@@ -21,10 +23,22 @@ class NetworkTool extends StatefulWidget with InAppDevToolsItem {
   final List<NetworkRequestFilter> networkRequestFilters;
 
   @override
-  State<NetworkTool> createState() => _NetworkToolState();
+  String get label => 'Network';
 
   @override
-  String get label => 'Network';
+  void initTool() {
+    HttpProfiler.ensureInitialized();
+    HttpOverrides.global = IADNetworkHttpOverrides();
+  }
+
+  @override
+  void disposeTool() {
+    HttpOverrides.global = null;
+    HttpProfiler.instance = null;
+  }
+
+  @override
+  State<NetworkTool> createState() => _NetworkToolState();
 }
 
 class _NetworkToolState extends State<NetworkTool> {

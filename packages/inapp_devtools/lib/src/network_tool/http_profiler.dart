@@ -15,7 +15,7 @@ abstract class HttpProfiler {
     return _instance!;
   }
 
-  static set instance(HttpProfiler value) {
+  static set instance(HttpProfiler? value) {
     _instance?.dispose();
     _instance = value;
   }
