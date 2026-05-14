@@ -232,6 +232,7 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   }
 
   void _onUserScroll(UserScrollNotification notification) {
+    if (notification.depth >= 1) return;
     if (notification.metrics.extentAfter > 0) {
       autoScrollToEnd = false;
     } else {
