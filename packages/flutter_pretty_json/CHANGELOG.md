@@ -1,4 +1,4 @@
-## 0.2.0
+## 0.1.1
 Added expand all and collapse all actions on Map & Array objects
 
 ## 0.1.0
