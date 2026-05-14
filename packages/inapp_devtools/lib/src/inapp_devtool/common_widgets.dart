@@ -54,60 +54,40 @@ class InAppDevToolsAppBar extends StatefulWidget
 }
 
 class _InAppDevToolsAppBarState extends State<InAppDevToolsAppBar> {
-  Widget? _toolPickerOverlay;
-
-  void _showToolPicker() {
-    final controller = InAppDevTools.of(context);
-    setState(() {
-      _toolPickerOverlay = InAppDevToolsPickerOverlay(
-        onClose: _hideToolPicker,
-        tools: controller.tools,
-        selectedToolIndex: controller.selectedToolIndex,
-        onToolSelected: (index) {
-          controller.setSelectedToolIndex(index);
-          _hideToolPicker();
-        },
-      );
-    });
-  }
-
-  void _hideToolPicker() {
-    setState(() {
-      _toolPickerOverlay = null;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final controller = InAppDevTools.of(context);
     final selectedTool = controller.tools[controller.selectedToolIndex];
-    final t = InAppDevToolsTheme.of(context);
+    final theme = InAppDevToolsTheme.of(context);
 
     return SizedBox.fromSize(
       size: widget.preferredSize,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Material(color: t.appBarBackgroundColor),
+          Material(color: theme.appBarBackgroundColor),
           Row(
             mainAxisSize: MainAxisSize.max,
             children: [
               Padding(
                 padding: EdgeInsetsGeometry.all(2),
-                child: buildToolDropdownButton(t, selectedTool),
+                child: buildToolDropdownButton(
+                  theme,
+                  controller.tools,
+                  selectedTool,
+                ),
               ),
-              Expanded(child: buildActionButtons(t, controller)),
+              Expanded(child: buildActionButtons(theme, controller)),
               IconButton(
                 onPressed: () {
                   controller.setPanelMode(
                     InAppDevToolsPanelWindowMode.minimized,
                   );
                 },
-                icon: Icon(Icons.close, color: t.appBarIconColor),
+                icon: Icon(Icons.close, color: theme.appBarIconColor),
               ),
             ],
           ),
-          ?_toolPickerOverlay,
           ?widget.customOverlay,
         ],
       ),
@@ -122,12 +102,12 @@ class _InAppDevToolsAppBarState extends State<InAppDevToolsAppBar> {
     if (controller.panelMode == InAppDevToolsPanelWindowMode.windowed) {
       expandButton = IconButton(
         onPressed: () => controller.setPanelMode(.maximized),
-        icon: Icon(Icons.open_in_full, color: t.appBarIconColor),
+        icon: Icon(Icons.fullscreen, color: t.appBarIconColor),
       );
     } else if (controller.panelMode == InAppDevToolsPanelWindowMode.maximized) {
       expandButton = IconButton(
         onPressed: () => controller.setPanelMode(.windowed),
-        icon: Icon(Icons.close_fullscreen, color: t.appBarIconColor),
+        icon: Icon(Icons.fullscreen_exit, color: t.appBarIconColor),
       );
     }
 
@@ -159,116 +139,40 @@ class _InAppDevToolsAppBarState extends State<InAppDevToolsAppBar> {
     );
   }
 
-  Material buildToolDropdownButton(
+  Widget buildToolDropdownButton(
     InAppDevToolsThemeData t,
+    List<InAppDevToolsItem> tools,
     InAppDevToolsItem selectedTool,
   ) {
-    return Material(
-      color: t.appBarToolSelectorBackgroundColor,
+    return PopupMenuButton(
+      initialValue: selectedTool,
+      tooltip: 'Select Tool',
+      menuPadding: EdgeInsets.all(2),
       borderRadius: BorderRadius.circular(6),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: _showToolPicker,
-        borderRadius: BorderRadius.circular(6),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: t.appBarToolSelectorBorderColor,
-              width: 1,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(selectedTool.label, style: t.appBarLabelStyle),
-                const SizedBox(width: 4),
-                Icon(Icons.arrow_right, size: 20, color: t.appBarIconColor),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Full-width row under the app bar to pick another [InAppDevToolsItem].
-class InAppDevToolsPickerOverlay extends StatelessWidget {
-  const InAppDevToolsPickerOverlay({
-    super.key,
-    required this.onClose,
-    required this.tools,
-    required this.selectedToolIndex,
-    required this.onToolSelected,
-  });
-
-  final VoidCallback onClose;
-  final List<InAppDevToolsItem> tools;
-  final int selectedToolIndex;
-  final ValueChanged<int> onToolSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = InAppDevToolsTheme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: t.appBarBackgroundColor,
-        border: Border(
-          bottom: BorderSide(color: t.pickerBottomBorderColor, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onClose,
-            icon: Icon(Icons.close, color: t.pickerIconColor),
-          ),
-          Expanded(
-            child: DecoratedBox(
-              position: DecorationPosition.foreground,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    t.appBarBackgroundColor,
-                    t.appBarBackgroundColor.withAlpha(0),
-                  ],
-                  begin: Alignment.centerRight,
-                  end: const Alignment(0.7, 0),
-                ),
-              ),
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 0, 24, 0),
-                itemBuilder: (context, index) {
-                  return GestureDetector(
-                    onTap: () {
-                      onToolSelected(index);
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: Center(
-                      child: Text(
-                        tools[index].label,
-                        style: t.pickerItemLabelStyle,
-                      ),
-                    ),
-                  );
-                },
-                separatorBuilder: (context, index) {
-                  return VerticalDivider(
-                    width: 16,
-                    thickness: 0.5,
-                    color: t.pickerListDividerColor,
-                  );
-                },
-                itemCount: tools.length,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          spacing: 4,
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 80, minHeight: 42),
+              child: Text(
+                selectedTool.label,
+                style: t.appBarLabelStyle,
+                maxLines: 1,
               ),
             ),
-          ),
-        ],
+            Icon(Icons.arrow_drop_down, color: t.appBarIconColor),
+          ],
+        ),
       ),
+      onSelected: (value) {
+        InAppDevTools.of(context).setSelectedToolIndex(tools.indexOf(value));
+      },
+      itemBuilder: (context) => [
+        for (var tool in tools)
+          PopupMenuItem(value: tool, height: 42, child: Text(tool.label)),
+      ],
     );
   }
 }
