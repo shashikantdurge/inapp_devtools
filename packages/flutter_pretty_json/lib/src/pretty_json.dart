@@ -30,6 +30,7 @@ class PrettyJson extends StatefulWidget {
   final TextStyle textStyle;
 
   /// The depth to expand the tree. Defaults to null.
+  /// If the [expanded] is set to false, this will be ignored.
   final int? expandDepth;
 
   @override
@@ -230,7 +231,7 @@ class _PrettyJsonState extends State<PrettyJson> {
       _selectedNode = selectedNode;
     });
 
-    final optionItems = [
+    final optionItems = <PopupMenuEntry<String>>[
       PopupMenuItem<String>(
         value: 'copy_value',
         height: 34,
@@ -263,6 +264,21 @@ class _PrettyJsonState extends State<PrettyJson> {
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text('Copy string as JSON literal', style: itemStyle),
+        ),
+      ],
+      if (selectedNode.children.isNotEmpty) ...[
+        PopupMenuDivider(height: 2, indent: 8, endIndent: 8),
+        PopupMenuItem<String>(
+          value: 'expand_all',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text('Expand all', style: itemStyle),
+        ),
+        PopupMenuItem<String>(
+          value: 'collapse_all',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text('Collapse all', style: itemStyle),
         ),
       ],
     ];
@@ -325,6 +341,28 @@ class _PrettyJsonState extends State<PrettyJson> {
         );
         final stringNode = node.content as StringPrimitiveTreeData;
         Clipboard.setData(ClipboardData(text: stringNode.value));
+        break;
+      case 'expand_all':
+        void expandNode(TreeViewNode<JsonTreeData> node) {
+          treeViewController.expandNode(node);
+          for (final child in node.children) {
+            if (child.children.isNotEmpty) {
+              expandNode(child);
+            }
+          }
+        }
+        expandNode(node);
+        break;
+      case 'collapse_all':
+        void collapseNode(TreeViewNode<JsonTreeData> node) {
+          treeViewController.collapseNode(node);
+          for (final child in node.children) {
+            if (child.children.isNotEmpty) {
+              collapseNode(child);
+            }
+          }
+        }
+        collapseNode(node);
         break;
       default:
         throw UnimplementedError('Action $action is not implemented');
