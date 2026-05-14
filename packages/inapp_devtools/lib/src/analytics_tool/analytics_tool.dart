@@ -215,7 +215,7 @@ class _AnalyticsToolState extends State<AnalyticsTool> {
                     if (itemInfos.isEmpty) {
                       return const Center(
                         child: Text(
-                          'No analytics logs yet',
+                          'Empty',
                           style: TextStyle(color: Colors.grey),
                         ),
                       );

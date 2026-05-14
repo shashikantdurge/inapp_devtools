@@ -263,36 +263,38 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
                   _onUserScroll(notification);
                   return false;
                 },
-                child: SizeChangedLayoutNotifier(
-                  child: CustomScrollView(
-                    controller: scrollController,
-                    slivers: [
-                      ValueListenableBuilder(
-                        valueListenable: _filteredProfileDataNotifier,
-                        builder: (context, filteredProfileData, child) {
-                          final length = filteredProfileData.length;
-                          return SliverFixedExtentList.builder(
-                            itemExtent: _kRequestRowHeight,
-                            itemCount: length,
-                            itemBuilder: (context, index) {
-                              final data = filteredProfileData[index];
+                child: ValueListenableBuilder(
+                  valueListenable: _filteredProfileDataNotifier,
+                  builder: (context, filteredProfileData, child) {
+                    if (filteredProfileData.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Empty',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      );
+                    }
+                    final length = filteredProfileData.length;
+                    return ListView.builder(
+                      controller: scrollController,
+                      itemExtent: _kRequestRowHeight,
+                      itemCount: length,
+                      itemBuilder: (context, index) {
+                        final data = filteredProfileData[index];
 
-                              return ListenableBuilder(
-                                listenable: data,
-                                builder: (context, child) {
-                                  return _NetworkProfileHeaderWidget(
-                                    profileData: data,
-                                    onTap: () => widget.onItemTap(data),
-                                    decoration: decoration,
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+                        return ListenableBuilder(
+                          listenable: data,
+                          builder: (context, child) {
+                            return _NetworkProfileHeaderWidget(
+                              profileData: data,
+                              onTap: () => widget.onItemTap(data),
+                              decoration: decoration,
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ),
