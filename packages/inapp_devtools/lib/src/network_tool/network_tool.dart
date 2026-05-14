@@ -137,7 +137,10 @@ class _NetworkRequestListView extends StatefulWidget {
 }
 
 class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
-  ScrollController scrollController = ScrollController();
+  late ScrollController scrollController = ScrollController(
+    initialScrollOffset:
+        _filteredProfileDataNotifier.value.length * _kRequestRowHeight,
+  );
   StreamSubscription? _profileDataStreamSubscription;
   bool _autoScrollToEnd = true;
   bool get autoScrollToEnd => _autoScrollToEnd;
@@ -169,8 +172,8 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
     super.initState();
     _profileDataStreamSubscription = NetworkProfiler.instance
         .getProfileDataStream()
-        .listen(_filterProfileData);
-    _filterProfileData(
+        .listen(_onProfileDataReceived);
+    _onProfileDataReceived(
       NetworkProfiler.instance.getProfileData() ?? [],
       notify: false,
     );
@@ -180,14 +183,20 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
   void didUpdateWidget(covariant _NetworkRequestListView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.requestFilters != widget.requestFilters) {
-      _filterProfileData(
+      _onProfileDataReceived(
         NetworkProfiler.instance.getProfileData() ?? [],
         notify: false,
       );
     }
   }
 
-  void _filterProfileData(List<NetworkProfileData> data, {bool notify = true}) {
+  /// Filters the profile data and updates the [_filteredProfileDataNotifier]
+  ///
+  /// Automatically scrolls to the last item if [autoScrollToEnd] is true.
+  void _onProfileDataReceived(
+    List<NetworkProfileData> data, {
+    bool notify = true,
+  }) {
     _filteredProfileDataNotifier.value = data.where((request) {
       return widget.requestFilters.every((filter) => filter.matches(request));
     }).toList();
@@ -258,43 +267,45 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
                 _onLayoutSizeChanged();
                 return true;
               },
-              child: NotificationListener<UserScrollNotification>(
-                onNotification: (notification) {
-                  _onUserScroll(notification);
-                  return false;
-                },
-                child: ValueListenableBuilder(
-                  valueListenable: _filteredProfileDataNotifier,
-                  builder: (context, filteredProfileData, child) {
-                    if (filteredProfileData.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Empty',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      );
-                    }
-                    final length = filteredProfileData.length;
-                    return ListView.builder(
-                      controller: scrollController,
-                      itemExtent: _kRequestRowHeight,
-                      itemCount: length,
-                      itemBuilder: (context, index) {
-                        final data = filteredProfileData[index];
-
-                        return ListenableBuilder(
-                          listenable: data,
-                          builder: (context, child) {
-                            return _NetworkProfileHeaderWidget(
-                              profileData: data,
-                              onTap: () => widget.onItemTap(data),
-                              decoration: decoration,
-                            );
-                          },
-                        );
-                      },
-                    );
+              child: SizeChangedLayoutNotifier(
+                child: NotificationListener<UserScrollNotification>(
+                  onNotification: (notification) {
+                    _onUserScroll(notification);
+                    return false;
                   },
+                  child: ValueListenableBuilder(
+                    valueListenable: _filteredProfileDataNotifier,
+                    builder: (context, filteredProfileData, child) {
+                      if (filteredProfileData.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Empty',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        );
+                      }
+                      final length = filteredProfileData.length;
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemExtent: _kRequestRowHeight,
+                        itemCount: length,
+                        itemBuilder: (context, index) {
+                          final data = filteredProfileData[index];
+
+                          return ListenableBuilder(
+                            listenable: data,
+                            builder: (context, child) {
+                              return _NetworkProfileHeaderWidget(
+                                profileData: data,
+                                onTap: () => widget.onItemTap(data),
+                                decoration: decoration,
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -945,7 +956,6 @@ class _TabViewHeaders extends StatefulWidget {
     }
 
     final content = buffer.toString().trimRight();
-    debugPrint('Copy content: $content');
     Clipboard.setData(ClipboardData(text: content));
   }
 
