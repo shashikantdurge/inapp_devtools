@@ -56,7 +56,11 @@ class _JsonViewerExampleState extends State<JsonViewerExample> {
             );
           }
 
-          return PrettyJson(encodedJson: snapshot.data ?? '{}', expandDepth: 1);
+          return PrettyJson(
+            encodedJson: snapshot.data ?? '{}',
+            expandDepth: 3,
+            expanded: false,
+          );
         },
       ),
     );
