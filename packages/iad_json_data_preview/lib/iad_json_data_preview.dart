@@ -25,7 +25,6 @@ class IadJsonDataPreview extends DataPreviewExtension<String> {
   VoidCallback? copyContentCallback(String data) {
     return () {
       final content = JsonEncoder.withIndent('\t').convert(jsonDecode(data));
-      debugPrint('Copy content: $content');
       Clipboard.setData(ClipboardData(text: content));
     };
   }

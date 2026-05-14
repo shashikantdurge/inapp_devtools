@@ -74,8 +74,7 @@ class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (e, st) {
-      debugPrint('ApiPlaygroundScreen request error: $e\n$st');
+    } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(

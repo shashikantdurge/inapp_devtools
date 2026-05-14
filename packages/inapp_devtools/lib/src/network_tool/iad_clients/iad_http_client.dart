@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -20,7 +19,6 @@ class IADNetworkHttpOverrides extends HttpOverrides {
 extension on NetworkProfileData {
   void appendRequestData(Uint8List data) {
     request.requestBody.addAll(data);
-    log('appendRequestData');
     sendDataToProfiler();
   }
 
@@ -53,7 +51,6 @@ extension on NetworkProfileData {
     this.request.followRedirects = request.followRedirects;
     this.request.maxRedirects = request.maxRedirects;
     this.request.persistentConnection = request.persistentConnection;
-    log('finishRequest');
     sendDataToProfiler();
   }
 
@@ -61,7 +58,6 @@ extension on NetworkProfileData {
     request.requestInProgress = false;
     request.requestEndedAt = DateTime.now();
     request.error = error;
-    log('finishRequestWithError');
     sendDataToProfiler();
   }
 
@@ -72,7 +68,6 @@ extension on NetworkProfileData {
     if (response.responseInProgress != true) return;
     response.responseInProgress = false;
     response.responseEndedAt = DateTime.now();
-    log('finishResponse');
     sendDataToProfiler();
   }
 
@@ -84,13 +79,11 @@ extension on NetworkProfileData {
     response.responseInProgress = false;
     response.responseEndedAt = DateTime.now();
     response.error = error;
-    log('finishResponseWithError');
     sendDataToProfiler();
   }
 
   void appendResponseData(List<int> data) {
     response.responseBody.addAll(data);
-    log('appendResponseData');
     sendDataToProfiler();
   }
 
@@ -117,7 +110,6 @@ extension on NetworkProfileData {
     this.response.persistentConnection = response.persistentConnection;
     this.response.responseStartedAt = DateTime.now();
     this.response.responseInProgress = true;
-    log('startResponse');
     sendDataToProfiler();
   }
 }
