@@ -1,3 +1,6 @@
+## 0.2.0
+Added expand all and collapse all actions on Map & Array objects
+
 ## 0.1.0
 
 * Initial release of `flutter_pretty_json`.
