@@ -48,9 +48,7 @@ abstract class AnalyticsProfiler {
 /// Stores entries in a list and emits updates on a stream.
 class AnalyticsProfilerMemoryImpl implements AnalyticsProfiler {
   final BehaviorSubject<List<AnalyticsProfileData>> _profileDataSubject =
-      BehaviorSubject<List<AnalyticsProfileData>>.seeded(
-        generateAnalyticsProfileData(100),
-      );
+      BehaviorSubject<List<AnalyticsProfileData>>.seeded([]);
 
   void _append(AnalyticsProfileData entry) {
     final newData = List<AnalyticsProfileData>.of(_profileDataSubject.value)
@@ -155,15 +153,4 @@ class AnalyticsProfilerMemoryImpl implements AnalyticsProfiler {
   void dispose() {
     _profileDataSubject.close();
   }
-}
-
-List<AnalyticsProfileData> generateAnalyticsProfileData(int length) {
-  return List.generate(
-    length,
-    (index) => AnalyticsProfileData.event(
-      name: 'event_$index',
-      parameters: {'parameter_$index': index},
-      loggedAt: DateTime.now(),
-    ),
-  );
 }
