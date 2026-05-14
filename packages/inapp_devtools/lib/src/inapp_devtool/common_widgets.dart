@@ -159,6 +159,7 @@ class _InAppDevToolsAppBarState extends State<InAppDevToolsAppBar> {
               child: Text(
                 selectedTool.label,
                 style: t.appBarLabelStyle,
+                overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
             ),

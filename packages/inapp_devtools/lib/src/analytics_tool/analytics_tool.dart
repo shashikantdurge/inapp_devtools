@@ -190,9 +190,9 @@ class _AnalyticsToolState extends State<AnalyticsTool> {
       appBar: InAppDevToolsAppBar(
         customActions: [
           IconButton(
-            tooltip: 'Clear analytics logs',
+            tooltip: 'Delete analytics logs',
             onPressed: AnalyticsProfiler.instance.clear,
-            icon: const Icon(Icons.clear_all),
+            icon: const Icon(Icons.delete_outline),
           ),
         ],
       ),

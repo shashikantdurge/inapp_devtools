@@ -66,14 +66,14 @@ class _NetworkToolState extends State<NetworkTool> {
       appBar: InAppDevToolsAppBar(
         customActions: [
           IconButton(
-            tooltip: 'Clear network logs',
+            tooltip: 'Delete network logs',
             onPressed: () {
               NetworkProfiler.instance.clear();
               setState(() {
                 _selectedProfileData = null;
               });
             },
-            icon: Icon(Icons.clear_all, color: Colors.white),
+            icon: Icon(Icons.delete_outline, color: Colors.white),
           ),
         ],
       ),
