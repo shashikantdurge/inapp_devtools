@@ -73,7 +73,7 @@ class _NetworkToolState extends State<NetworkTool> {
                 _selectedProfileData = null;
               });
             },
-            icon: Icon(Icons.delete_outline, color: Colors.white),
+            icon: Icon(Icons.delete_outline),
           ),
         ],
       ),
@@ -278,7 +278,7 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
                     valueListenable: _filteredProfileDataNotifier,
                     builder: (context, filteredProfileData, child) {
                       if (filteredProfileData.isEmpty) {
-                        return const Center(
+                        return Center(
                           child: Text(
                             'Empty',
                             style: TextStyle(color: Colors.grey),
