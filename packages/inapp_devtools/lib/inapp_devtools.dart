@@ -10,6 +10,4 @@ export 'src/network_tool/network_request_filter.dart'
     show NetworkProfileDataFilter;
 export 'src/logging_tool/logging_tool.dart' show LoggingTool;
 export 'src/logging_tool/logging_profiler.dart' show LoggingProfiler;
-export 'src/logging_tool/two_dimensional_text_box.dart'
-    show TwoDimensionalTextBox, TwoDimensionalTextScrollView;
 export 'package:logging/logging.dart';

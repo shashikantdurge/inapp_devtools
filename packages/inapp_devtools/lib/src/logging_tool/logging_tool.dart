@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
+import 'package:inapp_devtools/src/logging_tool/single_child_pan_viewport.dart';
 import 'package:intl/intl.dart';
 
 import 'logging_list_model.dart';
@@ -151,7 +152,7 @@ class _LoggingToolState extends State<LoggingTool> {
           separatorBuilder: (context, index, animation) {
             return FadeTransition(
               opacity: animation,
-              child: const Divider(height: 4, color: Color(0xFF303030)),
+              child: const Divider(height: 1, color: Color(0xFF303030)),
             );
           },
           removedSeparatorBuilder: (context, index, animation) {
@@ -215,35 +216,6 @@ class _LogTile extends StatelessWidget {
   LogRecord get record => entry.record;
   bool get expanded => entry.expanded;
 
-  Color _getLevelColor(Level level) {
-    return switch (level) {
-      Level.WARNING => const Color(0xFFFFB74D),
-      Level.SEVERE => const Color(0xFFD7263D),
-      Level.SHOUT => const Color(0xFFD7263D),
-      Level.FINE ||
-      Level.FINER ||
-      Level.FINEST => const Color(0xFF958ea0).withValues(alpha: 0.5),
-      _ => const Color(0xFF42A5F5),
-    };
-  }
-
-  String? stackTraceCriticalLine() {
-    if (record.stackTrace?.toString() case String input) {
-      final bracketIndex = input.indexOf('(');
-
-      final beforeBracket = bracketIndex == -1
-          ? input
-          : input.substring(0, bracketIndex);
-
-      return beforeBracket.replaceFirst(RegExp(r'^#\d+\s+'), '').trim();
-    }
-    return null;
-  }
-
-  String _formatTime(DateTime time) {
-    return DateFormat('HH:mm:ss.SSS').format(time);
-  }
-
   String _formatLogObject(Object object) {
     if (object is Map || object is Iterable) {
       try {
@@ -255,25 +227,39 @@ class _LogTile extends StatelessWidget {
     return object.toString();
   }
 
+  static const _mutedColor = Color(0xFF958ea0);
+
+  static bool _isDenseLevel(Level level) => switch (level) {
+    Level.FINE || Level.FINER || Level.FINEST => true,
+    _ => false,
+  };
+
+  static Color _levelColor(Level level, {required bool dense}) {
+    if (dense) {
+      return _mutedColor.withValues(alpha: 0.5);
+    }
+    return switch (level) {
+      Level.WARNING => const Color(0xFFFFB74D),
+      Level.SEVERE => const Color(0xFFD7263D),
+      Level.SHOUT => const Color(0xFFD7263D),
+      _ => const Color(0xFF42A5F5),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    final textColorOpacity = switch (record.level) {
-      Level.FINE => 0.5,
-      Level.FINER => 0.5,
-      Level.FINEST => 0.5,
-      _ => 1.0,
-    };
-
-    final levelColor = _getLevelColor(record.level);
-    final decorBgColor = switch (record.level) {
-      Level.FINE || Level.FINER || Level.FINEST => Colors.transparent,
-      _ => levelColor.withValues(alpha: 0.2),
-    };
-    final onSurface = Theme.of(
-      context,
-    ).colorScheme.onSurface.withValues(alpha: textColorOpacity);
-
+    final dense = _isDenseLevel(record.level);
+    final levelColor = _levelColor(record.level, dense: dense);
+    final header = _LogTileHeader(
+      record: record,
+      onToggleExpanded: onToggleExpanded,
+      dense: dense,
+      levelColor: levelColor,
+    );
     final tile = Container(
+      decoration: BoxDecoration(
+        color: expanded ? Colors.black : Colors.transparent,
+      ),
       foregroundDecoration: BoxDecoration(
         border: Border(
           left: BorderSide(
@@ -289,117 +275,37 @@ class _LogTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            InkWell(
-              onTap: onToggleExpanded,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      spacing: 8,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
-                          decoration: BoxDecoration(
-                            color: decorBgColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            record.level.name.toUpperCase(),
-                            style: TextStyle(
-                              color: levelColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          _formatTime(record.time),
-                          maxLines: 1,
-                          style: TextStyle(
-                            color: const Color(
-                              0xFF958ea0,
-                            ).withValues(alpha: textColorOpacity),
-                            fontSize: 12,
-                          ),
-                        ),
-                        if (record.loggerName.isNotEmpty)
-                          Flexible(
-                            child: Text(
-                              record.loggerName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: const Color(
-                                  0xFF958ea0,
-                                ).withValues(alpha: textColorOpacity),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      record.message,
-                      style: TextStyle(fontSize: 14, color: onSurface),
-                    ),
-                    if (stackTraceCriticalLine()
-                        case final String stackTraceLine)
-                      Text(
-                        stackTraceLine,
-                        style: const TextStyle(
-                          color: Color(0xFF958ea0),
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              ),
-            ),
+            header,
             if (expanded)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (record.error != null) ...[
-                      const SizedBox(height: 8),
                       const _LogDetailLabel(text: 'Error'),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${record.error}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: onSurface,
-                          fontFamily: 'monospace',
-                        ),
+                      const SizedBox(height: 2),
+                      _TwoDimensionalTextBox(
+                        text: _formatLogObject(record.error!),
                       ),
-                    ],
-                    if (record.object != null) ...[
                       const SizedBox(height: 8),
+                    ],
+                    if (record.object != null &&
+                        record.object != record.error) ...[
                       const _LogDetailLabel(text: 'Object'),
-                      const SizedBox(height: 4),
-                      TwoDimensionalTextBox(
+                      const SizedBox(height: 2),
+                      _TwoDimensionalTextBox(
                         text: _formatLogObject(record.object!),
-                        maxHeight: 120,
                       ),
+                      const SizedBox(height: 8),
                     ],
                     if (record.stackTrace != null) ...[
-                      const SizedBox(height: 8),
                       const _LogDetailLabel(text: 'StackTrace'),
-                      const SizedBox(height: 4),
-                      TwoDimensionalTextBox(
-                        text: record.stackTrace.toString(),
-                        maxHeight: 120,
+                      const SizedBox(height: 2),
+                      _TwoDimensionalTextBox(
+                        text: record.stackTrace.toString().trim(),
                       ),
+                      const SizedBox(height: 8),
                     ],
                   ],
                 ),
@@ -408,8 +314,160 @@ class _LogTile extends StatelessWidget {
         ),
       ),
     );
-
     return tile;
+  }
+}
+
+class _LogTileHeader extends StatelessWidget {
+  const _LogTileHeader({
+    required this.record,
+    required this.onToggleExpanded,
+    required this.dense,
+    required this.levelColor,
+  });
+
+  final LogRecord record;
+  final VoidCallback onToggleExpanded;
+  final bool dense;
+  final Color levelColor;
+
+  static const _mutedColor = Color(0xFF958ea0);
+
+  static String _formatTime(DateTime time) {
+    return DateFormat('HH:mm:ss.SSS').format(time);
+  }
+
+  String? _stackTraceCriticalLine() {
+    if (record.stackTrace?.toString() case String input) {
+      final bracketIndex = input.indexOf('(');
+      final beforeBracket = bracketIndex == -1
+          ? input
+          : input.substring(0, bracketIndex);
+      return beforeBracket.replaceFirst(RegExp(r'^#\d+\s+'), '').trim();
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final decorBgColor = dense
+        ? Colors.transparent
+        : levelColor.withValues(alpha: 0.2);
+    final textColorOpacity = dense ? 0.5 : 1.0;
+    final textSize = dense ? 12.0 : 14.0;
+    final mutedStyle = TextStyle(
+      color: _mutedColor.withValues(alpha: textColorOpacity),
+      fontSize: 12,
+    );
+    final onSurface = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: textColorOpacity);
+    final levelLabelStyle = TextStyle(
+      color: levelColor,
+      fontSize: 10,
+      fontWeight: FontWeight.w500,
+    );
+
+    return InkWell(
+      onTap: onToggleExpanded,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (dense)
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: record.level.name.toUpperCase(),
+                      style: levelLabelStyle,
+                    ),
+                    const TextSpan(text: '  '),
+                    TextSpan(text: _formatTime(record.time), style: mutedStyle),
+                    if (record.loggerName.isNotEmpty) ...[
+                      const TextSpan(text: '  '),
+                      TextSpan(text: record.loggerName, style: mutedStyle),
+                    ],
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 4, right: 4),
+                        child: Icon(
+                          Icons.lens,
+                          size: 4,
+                          color: _mutedColor.withValues(
+                            alpha: textColorOpacity,
+                          ),
+                        ),
+                      ),
+                    ),
+                    TextSpan(
+                      text: record.message,
+                      style: TextStyle(fontSize: textSize, color: onSurface),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+              Row(
+                spacing: 8,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
+                    decoration: BoxDecoration(
+                      color: decorBgColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      record.level.name.toUpperCase(),
+                      style: levelLabelStyle,
+                    ),
+                  ),
+                  Text(
+                    _formatTime(record.time),
+                    maxLines: 1,
+                    style: mutedStyle,
+                  ),
+                  if (record.loggerName.isNotEmpty)
+                    Flexible(
+                      child: Text(
+                        record.loggerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: mutedStyle,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              if (record.message != record.error.toString())
+                Text(
+                  record.message,
+                  style: TextStyle(fontSize: textSize, color: onSurface),
+                )
+              else
+                Text(
+                  record.error.runtimeType.toString(),
+                  style: TextStyle(fontSize: textSize, color: onSurface),
+                ),
+              if (_stackTraceCriticalLine() case final String stackTraceLine
+                  when stackTraceLine.isNotEmpty)
+                Text(
+                  stackTraceLine,
+                  style: const TextStyle(
+                    color: _mutedColor,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -427,6 +485,36 @@ class _LogDetailLabel extends StatelessWidget {
         fontWeight: FontWeight.w500,
         color: Color(0xFF958ea0),
         letterSpacing: 0.4,
+      ),
+    );
+  }
+}
+
+class _TwoDimensionalTextBox extends StatelessWidget {
+  const _TwoDimensionalTextBox({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(maxHeight: 116, minWidth: double.infinity),
+      decoration: BoxDecoration(
+        color: Color(0xFF141414),
+        borderRadius: BorderRadius.circular(6),
+        // border: Border.all(color: Colors.grey[900]!),
+      ),
+      child: SingleChildPanViewport(
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          text.trim(),
+          softWrap: false,
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.35,
+            fontFamily: 'monospace',
+            color: Color(0xFFBDBDBD),
+          ),
+        ),
       ),
     );
   }
