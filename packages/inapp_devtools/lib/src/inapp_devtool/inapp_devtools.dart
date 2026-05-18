@@ -50,7 +50,7 @@ enum InAppDevToolsPanelWindowMode {
 class InAppDevTools extends StatefulWidget {
   InAppDevTools({
     super.key,
-    this.tools = const [NetworkTool(), AnalyticsTool()],
+    this.tools = const [NetworkTool(), AnalyticsTool(), LoggingTool()],
     this.initialSelectedToolIndex = 0,
     this.theme,
     this.color,
@@ -195,8 +195,7 @@ class _InAppDevToolsState extends State<InAppDevTools> {
         );
       case InAppDevToolsPanelWindowMode.windowed:
       case InAppDevToolsPanelWindowMode.maximized:
-        return DecoratedBox(
-          position: DecorationPosition.foreground,
+        return Container(
           decoration: BoxDecoration(
             border: Border.all(
               color: widget.color ?? chrome.panelBorderColor,

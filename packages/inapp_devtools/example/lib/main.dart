@@ -5,6 +5,7 @@ import 'package:iad_json_data_preview/iad_json_data_preview.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 import 'analytics_playground_screen.dart';
 import 'api_playground_screen.dart';
+import 'logging_playground_screen.dart';
 import 'http_test_framework.dart';
 
 // --- Postman-inspired theme ---
@@ -21,6 +22,8 @@ void main() {
   //   print('FlutterError: ${details.exceptionAsString()}');
   // };
   AnalyticsProfiler.ensureInitialized();
+  LoggingProfiler.ensureInitialized();
+  Logger.root.level = Level.ALL;
   runApp(const MyApp());
 }
 
@@ -31,6 +34,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return InAppDevTools(
       tools: [
+        const LoggingTool(),
         AnalyticsTool(key: ValueKey('4')),
         NetworkTool(
           dataPreviewExtensions: [IadJsonDataPreview(), IadImageDataPreview()],
@@ -323,6 +327,17 @@ class _MyHomePageState extends State<MyHomePage> {
               Navigator.of(context).push<void>(
                 MaterialPageRoute<void>(
                   builder: (context) => const AnalyticsPlaygroundScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'Logging playground',
+            icon: const Icon(Icons.article_outlined),
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (context) => const LoggingPlaygroundScreen(),
                 ),
               );
             },

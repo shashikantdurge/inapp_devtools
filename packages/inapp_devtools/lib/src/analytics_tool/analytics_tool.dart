@@ -80,11 +80,13 @@ class _AnalyticsToolState extends State<AnalyticsTool> {
   }
 
   void _ensureLastItemVisible() {
-    _scrollController.animateTo(
-      lastScrollOffset,
-      duration: Duration(milliseconds: 160),
-      curve: Curves.easeInOut,
-    );
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        lastScrollOffset,
+        duration: Duration(milliseconds: 160),
+        curve: Curves.easeInOut,
+      );
+    }
     autoScrollToEnd = true;
   }
 
