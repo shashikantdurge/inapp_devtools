@@ -1,20 +1,8 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
-import 'package:inapp_devtools/src/logging_tool/single_child_pan_viewport.dart';
 import 'package:intl/intl.dart';
-
-/// Wraps a [LogRecord] with UI state for the logging tool list.
-class LogRecordEntry {
-  LogRecordEntry(this.record, {this.expanded = false});
-
-  final LogRecord record;
-  bool expanded;
-
-  int get sequenceNumber => record.sequenceNumber;
-}
 
 class LoggingTool extends StatefulWidget with InAppDevToolsItem {
   const LoggingTool({super.key});
@@ -38,46 +26,12 @@ class LoggingTool extends StatefulWidget with InAppDevToolsItem {
 
 class _LoggingToolState extends State<LoggingTool> {
   bool autoUpdateList = true;
-  late final Stream<List<LogRecordEntry>> _entriesStream;
+  late final Stream<List<LogRecord>> _entriesStream;
 
   @override
   void initState() {
     super.initState();
-    _entriesStream = LoggingProfiler.instance.getLoggingDataStream().map(
-      _recordsToEntries,
-    );
-  }
-
-  List<LogRecordEntry> _recordsToEntries(List<LogRecord> records) {
-    return records.map((record) => LogRecordEntry(record)).toList();
-  }
-
-  void _toggleExpanded(LogRecordEntry entry) {
-    setState(() => entry.expanded = !entry.expanded);
-  }
-
-  Widget _buildLogTile(LogRecordEntry entry) {
-    return _LogTile(
-      key: ValueKey(entry.sequenceNumber),
-      entry: entry,
-      onToggleExpanded: () => _toggleExpanded(entry),
-    );
-    // if (entry.animateType == AnimateType.size) {
-    //   child = SizeTransition(
-    //     sizeFactor: animation,
-    //     axisAlignment: 1,
-    //     child: child,
-    //   );
-    // } else if (entry.animateType == AnimateType.fade) {
-    //   child = DecoratedBoxTransition(
-    //     decoration: DecorationTween(
-    //       begin: BoxDecoration(color: Colors.black),
-    //       end: BoxDecoration(),
-    //     ).animate(animation),
-    //     child: child,
-    //   );
-    // }
-    // return child;
+    _entriesStream = LoggingProfiler.instance.getLoggingDataStream();
   }
 
   @override
@@ -104,31 +58,36 @@ class _LoggingToolState extends State<LoggingTool> {
           ),
         ],
       ),
-      body: InAppDevToolsScrollView<LogRecordEntry>(
+      body: InAppDevToolsScrollView<LogRecord>(
         autoUpdate: autoUpdateList,
-        getItems: () =>
-            _recordsToEntries(LoggingProfiler.instance.getLoggingData() ?? []),
+        getItems: () => LoggingProfiler.instance.getLoggingData() ?? [],
         itemsStream: _entriesStream,
-        itemBuilder: (context, entry) {
-          return _buildLogTile(entry);
+        itemBuilder: (context, itemInfo) {
+          return _LogTile(
+            key: ValueKey(itemInfo.item.sequenceNumber),
+            record: itemInfo.item,
+          );
         },
       ),
     );
   }
 }
 
-class _LogTile extends StatelessWidget {
-  const _LogTile({
-    super.key,
-    required this.entry,
-    required this.onToggleExpanded,
-  });
+class _LogTile extends StatefulWidget {
+  const _LogTile({super.key, required this.record});
 
-  final LogRecordEntry entry;
-  final VoidCallback onToggleExpanded;
+  final LogRecord record;
 
-  LogRecord get record => entry.record;
-  bool get expanded => entry.expanded;
+  @override
+  State<_LogTile> createState() => _LogTileState();
+}
+
+class _LogTileState extends State<_LogTile> {
+  bool _expanded = false;
+
+  LogRecord get record => widget.record;
+
+  void _toggleExpanded() => setState(() => _expanded = !_expanded);
 
   String _formatLogObject(Object object) {
     if (object is Map || object is Iterable) {
@@ -166,21 +125,58 @@ class _LogTile extends StatelessWidget {
     final levelColor = _levelColor(record.level, dense: dense);
     final header = _LogTileHeader(
       record: record,
-      onToggleExpanded: onToggleExpanded,
+      onToggleExpanded: _toggleExpanded,
       dense: dense,
       levelColor: levelColor,
     );
+
+    List<Widget>? expandedChildren;
+    if (_expanded) {
+      expandedChildren = [];
+      if (record.error != null) {
+        expandedChildren.addAll([
+          _LogDetailLabel(
+            text: 'Error (${record.error!.runtimeType.toString()})',
+          ),
+          const SizedBox(height: 2),
+          CodeBlockBox(text: _formatLogObject(record.error!)),
+          const SizedBox(height: 8),
+        ]);
+      }
+
+      if (record.object != null && record.object != record.error) {
+        expandedChildren.addAll([
+          _LogDetailLabel(
+            text: 'Object (${record.object!.runtimeType.toString()})',
+          ),
+          const SizedBox(height: 2),
+          CodeBlockBox(text: _formatLogObject(record.object!)),
+          const SizedBox(height: 8),
+        ]);
+      }
+
+      if (record.stackTrace != null) {
+        expandedChildren.addAll([
+          const _LogDetailLabel(text: 'StackTrace'),
+          const SizedBox(height: 2),
+          CodeBlockBox(text: record.stackTrace.toString().trim()),
+          const SizedBox(height: 8),
+        ]);
+      }
+    }
+
     final tile = Container(
       decoration: BoxDecoration(
-        color: expanded ? Colors.black : Colors.transparent,
+        color: _expanded ? Colors.black : Colors.transparent,
       ),
       foregroundDecoration: BoxDecoration(
         border: Border(
           left: BorderSide(
             color: levelColor,
-            width: expanded ? 3 : 1,
+            width: _expanded ? 3 : 1,
             strokeAlign: BorderSide.strokeAlignInside,
           ),
+          bottom: BorderSide(color: Color.fromARGB(255, 37, 37, 37), width: 1),
         ),
       ),
       child: AnimatedSize(
@@ -190,44 +186,12 @@ class _LogTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             header,
-            if (expanded)
+            if (expandedChildren != null && expandedChildren.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 4),
-                    if (record.error != null) ...[
-                      _LogDetailLabel(
-                        text: 'Error (${record.error!.runtimeType.toString()})',
-                      ),
-                      const SizedBox(height: 2),
-                      _TwoDimensionalTextBox(
-                        text: _formatLogObject(record.error!),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (record.object != null &&
-                        record.object != record.error) ...[
-                      _LogDetailLabel(
-                        text:
-                            'Object (${record.object!.runtimeType.toString()})',
-                      ),
-                      const SizedBox(height: 2),
-                      _TwoDimensionalTextBox(
-                        text: _formatLogObject(record.object!),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (record.stackTrace != null) ...[
-                      const _LogDetailLabel(text: 'StackTrace'),
-                      const SizedBox(height: 2),
-                      _TwoDimensionalTextBox(
-                        text: record.stackTrace.toString().trim(),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ],
+                  children: [SizedBox(height: 4), ...expandedChildren],
                 ),
               ),
           ],
@@ -274,7 +238,7 @@ class _LogTileHeader extends StatelessWidget {
         ? Colors.transparent
         : levelColor.withValues(alpha: 0.2);
     final textColorOpacity = dense ? 0.5 : 1.0;
-    final textSize = dense ? 12.0 : 14.0;
+    final textSize = dense ? 12.0 : 13.0;
     final mutedStyle = TextStyle(
       color: _mutedColor.withValues(alpha: textColorOpacity),
       fontSize: 12,
@@ -420,36 +384,6 @@ class _LogDetailLabel extends StatelessWidget {
         color: Color(0xFF958ea0).withValues(),
         // color: Color.fromARGB(255, 116, 114, 119),
         letterSpacing: 0.4,
-      ),
-    );
-  }
-}
-
-class _TwoDimensionalTextBox extends StatelessWidget {
-  const _TwoDimensionalTextBox({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(maxHeight: 116, minWidth: double.infinity),
-      decoration: BoxDecoration(
-        color: Color(0xFF141414),
-        borderRadius: BorderRadius.circular(6),
-        // border: Border.all(color: Colors.grey[900]!),
-      ),
-      child: SingleChildPanViewport(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Text(
-          text.trim(),
-          softWrap: false,
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.35,
-            fontFamily: 'monospace',
-            color: Color(0xFFBDBDBD),
-          ),
-        ),
       ),
     );
   }

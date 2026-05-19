@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -8,22 +7,12 @@ import 'package:intl/intl.dart';
 
 import 'analytics_profile_data.dart';
 
-const _kAnalyticsRowHeight = 36.0;
+const _kAnalyticsItemHeight = 36.0;
+const _kAnalyticsParamsHeight = 120.0;
 const _kDividerHeight = 6.0;
 const numerator = 1;
 const denominator = 3;
 const part = 2 / (denominator + numerator);
-
-class _AnalyticsItemInfo {
-  final AnalyticsProfileData data;
-  double height;
-  bool expanded;
-  _AnalyticsItemInfo({
-    required this.data,
-    this.expanded = false,
-    this.height = _kAnalyticsRowHeight + _kDividerHeight * 2,
-  });
-}
 
 /// Shows analytics entries captured by [AnalyticsProfiler].
 ///
@@ -50,140 +39,16 @@ class AnalyticsTool extends StatefulWidget with InAppDevToolsItem {
 }
 
 class _AnalyticsToolState extends State<AnalyticsTool> {
-  late ScrollController _scrollController;
-  StreamSubscription<List<AnalyticsProfileData>>? _profileDataSubscription;
-  final _profileDataNotifier = ValueNotifier<List<_AnalyticsItemInfo>>(
-    <_AnalyticsItemInfo>[],
-  );
-  final newProfileDataCountNotifier = ValueNotifier<int>(0);
-  bool _autoScrollToEnd = true;
-
-  bool get autoScrollToEnd => _autoScrollToEnd;
-  set autoScrollToEnd(bool value) {
-    if (value == _autoScrollToEnd) return;
-    _autoScrollToEnd = value;
-    if (value) {
-      newProfileDataCountNotifier.value = 0;
-    }
-  }
-
-  double get lastScrollOffset {
-    final totalContentHeight = _profileDataNotifier.value.fold<double>(
-      0.0,
-      (sum, item) => sum + item.height,
-    );
-    if (!_scrollController.hasClients ||
-        totalContentHeight <= _scrollController.position.extentInside) {
-      return 0.0;
-    }
-    return totalContentHeight - _scrollController.position.extentInside;
-  }
-
-  void _ensureLastItemVisible() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        lastScrollOffset,
-        duration: Duration(milliseconds: 160),
-        curve: Curves.easeInOut,
-      );
-    }
-    autoScrollToEnd = true;
-  }
-
-  void _onExpandedChange(int index, bool expanded, double height) {
-    if (index == _profileDataNotifier.value.length - 1) {
-      WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-        _ensureLastItemVisible();
-      });
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-        autoScrollToEnd = _scrollController.position.extentAfter == 0;
-      });
-    }
-    _profileDataNotifier.value[index]
-      ..expanded = expanded
-      ..height = height;
-    setState(() {});
-  }
+  late final Stream<List<AnalyticsProfileData>> _itemsStream;
 
   @override
   void initState() {
     super.initState();
-    _profileDataNotifier.value = _wrapWithAnalyticsItemInfo(
-      AnalyticsProfiler.instance.getProfileData() ?? [],
-    );
-    _scrollController = ScrollController(
-      initialScrollOffset: _profileDataNotifier.value.fold(
-        0.0,
-        (previousValue, element) => previousValue + element.height,
-      ),
-    );
-    _profileDataSubscription = AnalyticsProfiler.instance
-        .getProfileDataStream()
-        .listen(_onProfileDataChange);
+    _itemsStream = AnalyticsProfiler.instance.getProfileDataStream();
   }
 
-  List<_AnalyticsItemInfo> _wrapWithAnalyticsItemInfo(
-    List<AnalyticsProfileData> profileData,
-  ) {
-    List<_AnalyticsItemInfo> result = [];
-    final currentValue = _profileDataNotifier.value;
-    for (int i = 0; i < profileData.length && i < currentValue.length; i++) {
-      result.add(
-        _AnalyticsItemInfo(
-          data: profileData[i],
-          expanded: currentValue[i].expanded,
-          height: currentValue[i].height,
-        ),
-      );
-    }
-    for (int i = currentValue.length; i < profileData.length; i++) {
-      result.add(_AnalyticsItemInfo(data: profileData[i]));
-    }
-    return result;
-  }
-
-  void _onProfileDataChange(List<AnalyticsProfileData> profileData) {
-    final dataCountDiff =
-        profileData.length - _profileDataNotifier.value.length;
-    _profileDataNotifier.value = _wrapWithAnalyticsItemInfo(profileData);
-
-    if ((autoScrollToEnd && _scrollController.hasClients == true) ||
-        profileData.isEmpty) {
-      _ensureLastItemVisible();
-    } else if (!autoScrollToEnd) {
-      if (dataCountDiff > 0) {
-        newProfileDataCountNotifier.value += dataCountDiff;
-      } else {
-        newProfileDataCountNotifier.value = 0;
-      }
-    }
-  }
-
-  void _onLayoutSizeChanged() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (autoScrollToEnd) {
-        _ensureLastItemVisible();
-      }
-    });
-  }
-
-  void _onUserScroll(UserScrollNotification notification) {
-    if (notification.depth >= 1) return;
-    if (notification.metrics.extentAfter > 0) {
-      autoScrollToEnd = false;
-    } else {
-      autoScrollToEnd = true;
-    }
-  }
-
-  @override
-  void dispose() {
-    _profileDataSubscription?.cancel();
-    _profileDataNotifier.dispose();
-    _scrollController.dispose();
-    newProfileDataCountNotifier.dispose();
-    super.dispose();
+  List<AnalyticsProfileData> _getItems() {
+    return AnalyticsProfiler.instance.getProfileData() ?? [];
   }
 
   @override
@@ -198,90 +63,20 @@ class _AnalyticsToolState extends State<AnalyticsTool> {
           ),
         ],
       ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          NotificationListener<SizeChangedLayoutNotification>(
-            onNotification: (_) {
-              _onLayoutSizeChanged();
-              return true;
-            },
-            child: SizeChangedLayoutNotifier(
-              child: NotificationListener<UserScrollNotification>(
-                onNotification: (notification) {
-                  _onUserScroll(notification);
-                  return false;
-                },
-                child: ValueListenableBuilder<List<_AnalyticsItemInfo>>(
-                  valueListenable: _profileDataNotifier,
-                  builder: (context, itemInfos, _) {
-                    if (itemInfos.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Empty',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      );
-                    }
-
-                    return Scrollbar(
-                      controller: _scrollController,
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        itemExtentBuilder: (index, _) {
-                          return index >= itemInfos.length
-                              ? null
-                              : itemInfos[index].height;
-                        },
-                        itemCount: itemInfos.length,
-                        itemBuilder: (context, index) {
-                          return _AnalyticsProfileWidget(
-                            hideTopDivider: index == 0,
-                            hideBottomDivider: index == itemInfos.length - 1,
-                            itemInfo: itemInfos[index],
-                            onExpandStateChange: (expanded, height) =>
-                                _onExpandedChange(index, expanded, height),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: ValueListenableBuilder(
-              valueListenable: newProfileDataCountNotifier,
-              builder: (context, newProfileDataCount, _) {
-                if (newProfileDataCount == 0) {
-                  return const SizedBox.shrink();
-                }
-                return FilledButton(
-                  onPressed: _ensureLastItemVisible,
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.all(
-                      Theme.of(context).colorScheme.secondary,
-                    ),
-                    padding: WidgetStateProperty.all(
-                      EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    ),
-                  ),
-                  child: Row(
-                    spacing: 4,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.arrow_downward_rounded),
-                      Text(newProfileDataCount.toString()),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+      body: InAppDevToolsScrollView<AnalyticsProfileData>(
+        padding: EdgeInsets.only(bottom: 16),
+        getItems: _getItems,
+        itemsStream: _itemsStream,
+        separatorBuilder: (context, index, animation) {
+          return const SizedBox.shrink();
+        },
+        itemBuilder: (context, itemInfo) {
+          return _AnalyticsProfileWidget(
+            key: ValueKey(itemInfo.item),
+            profileData: itemInfo.item,
+            hideBottomDivider: itemInfo.isLast,
+          );
+        },
       ),
     );
   }
@@ -289,14 +84,11 @@ class _AnalyticsToolState extends State<AnalyticsTool> {
 
 class _AnalyticsProfileWidget extends StatefulWidget {
   const _AnalyticsProfileWidget({
-    required this.onExpandStateChange,
-    required this.itemInfo,
-    this.hideTopDivider = false,
+    super.key,
+    required this.profileData,
     this.hideBottomDivider = false,
   });
-  final void Function(bool expanded, double height) onExpandStateChange;
-  final _AnalyticsItemInfo itemInfo;
-  final bool hideTopDivider;
+  final AnalyticsProfileData profileData;
   final bool hideBottomDivider;
 
   @override
@@ -306,9 +98,7 @@ class _AnalyticsProfileWidget extends StatefulWidget {
 
 class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
   String? _stringContent;
-  late bool _expanded = widget.itemInfo.expanded;
-  GlobalKey? _contentKey;
-  ScrollController? _scrollController;
+  late bool _expanded = false;
 
   bool get expanded => _stringContent != null && _expanded;
   @override
@@ -340,7 +130,7 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
       return propertyString;
     }
 
-    final data = widget.itemInfo.data;
+    final data = widget.profileData;
     return switch (data) {
       Event() => getParametersContent(data.parameters),
       ScreenView() => getParametersContent(data.parameters),
@@ -351,45 +141,21 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
   }
 
   void showData() {
-    _contentKey = GlobalKey();
-    _scrollController ??= ScrollController();
+    _expanded = true;
     _stringContent = getContentData();
     setState(() {});
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
-      _expanded = true;
-      final renderBox =
-          _contentKey!.currentContext!.findRenderObject() as RenderBox;
-      final size = renderBox.size;
-      widget.onExpandStateChange(
-        true,
-        (size.height + _kAnalyticsRowHeight + _kDividerHeight * 2).clamp(
-          _kAnalyticsRowHeight,
-          240,
-        ),
-      );
-    });
   }
 
   void hideData() {
     _expanded = false;
-    _contentKey = null;
     setState(() {});
   }
 
   void _resetDataState() {
     if (!_expanded) {
       _stringContent = null;
-      widget.onExpandStateChange(
-        false,
-        _kAnalyticsRowHeight + _kDividerHeight * 2,
-      );
+      setState(() {});
     }
-  }
-
-  @override
-  void dispose() {
-    _scrollController?.dispose();
-    super.dispose();
   }
 
   @override
@@ -407,7 +173,7 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
     const accentUserId = Color(0xFF6B9ED8); // steel blue
     const accentUserProp = Color(0xFF72B57A); // sage green
 
-    final data = widget.itemInfo.data;
+    final data = widget.profileData;
     final bgColor = Theme.of(context).scaffoldBackgroundColor;
     IconData iconData;
     switch (data) {
@@ -440,29 +206,17 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
 
     if (_stringContent case final String contentText) {
       contentChild = OverflowBox(
-        maxWidth: width - 24,
-        minWidth: width - 24,
-        minHeight: widget.itemInfo.height,
-        maxHeight: widget.itemInfo.height,
+        maxWidth: width,
+        minWidth: width,
+        minHeight: _kAnalyticsItemHeight,
+        maxHeight: _kAnalyticsParamsHeight + _kAnalyticsItemHeight,
         alignment: contentAlignment,
         fit: OverflowBoxFit.deferToChild,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(0, _kAnalyticsRowHeight, 0, 0),
-          // padding: EdgeInsets.zero,
-          child: Scrollbar(
-            thumbVisibility: true,
-            controller: _scrollController,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              child: Padding(
-                key: _contentKey,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                child: Text(
-                  contentText,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[300]),
-                ),
-              ),
-            ),
+          padding: EdgeInsets.fromLTRB(8, _kAnalyticsItemHeight, 8, 8),
+          child: CodeBlockBox(
+            text: contentText,
+            maxHeight: _kAnalyticsParamsHeight,
           ),
         ),
       );
@@ -470,82 +224,70 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
       contentChild = const SizedBox.shrink();
     }
 
-    return Stack(
-      alignment: contentAlignment,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.hideTopDivider)
-          SizedBox(
-            width: _kAnalyticsRowHeight,
-            child: Center(
-              child: VerticalDivider(
-                thickness: 2,
-                indent: _kAnalyticsRowHeight / 2,
-              ),
-            ),
-          )
-        else if (widget.hideBottomDivider)
-          SizedBox(
-            width: _kAnalyticsRowHeight,
-            child: Center(
-              child: VerticalDivider(
-                thickness: 2,
-                endIndent: _kAnalyticsRowHeight / 2,
-              ),
-            ),
-          )
-        else
-          SizedBox(
-            width: _kAnalyticsRowHeight,
-            child: Center(child: VerticalDivider(thickness: 2)),
-          ),
-        Padding(
-          // padding: EdgeInsets.zero,
-          padding: EdgeInsets.fromLTRB(0, _kDividerHeight, 0, _kDividerHeight),
-          child: AnimatedContainer(
-            // margin: EdgeInsets.fromLTRB(12, 0, 12, 0),
-            onEnd: _resetDataState,
-            curve: Curves.easeInOut,
-            duration: Duration(milliseconds: 200),
-            constraints: expanded
-                ? BoxConstraints(
-                    minWidth: _kAnalyticsRowHeight,
-                    minHeight: _kAnalyticsRowHeight,
-                    maxWidth: width,
-                    maxHeight: 240,
-                  )
-                : BoxConstraints.tightFor(
-                    width: _kAnalyticsRowHeight,
-                    height: _kAnalyticsRowHeight,
-                  ),
-            clipBehavior: Clip.hardEdge,
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              border: Border.all(color: color, width: 1.25),
-              borderRadius: BorderRadius.circular(expanded ? 10 : 100),
-            ),
-            child: contentChild,
+        Align(
+          alignment: contentAlignment,
+          child: SizedBox(
+            width: _kAnalyticsItemHeight,
+            height: _kDividerHeight,
+            child: VerticalDivider(thickness: 2),
           ),
         ),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: expanded ? hideData : showData,
-          child: Padding(
-            // padding: EdgeInsets.zero,
-            padding: EdgeInsets.fromLTRB(
-              0,
-              _kDividerHeight,
-              0,
-              _kDividerHeight,
+        Stack(
+          alignment: contentAlignment,
+          children: [
+            AnimatedContainer(
+              onEnd: _resetDataState,
+              curve: Curves.easeInOut,
+              duration: Duration(milliseconds: 200),
+              constraints: expanded
+                  ? BoxConstraints(
+                      minWidth: _kAnalyticsItemHeight,
+                      minHeight: _kAnalyticsItemHeight,
+                      maxWidth: width,
+                      maxHeight: 240,
+                    )
+                  : BoxConstraints.tightFor(
+                      width: _kAnalyticsItemHeight,
+                      height: _kAnalyticsItemHeight,
+                    ),
+              clipBehavior: Clip.hardEdge,
+              foregroundDecoration: BoxDecoration(
+                border: Border.all(color: color, width: 1.25),
+                borderRadius: BorderRadius.circular(expanded ? 10 : 100),
+              ),
+              decoration: BoxDecoration(
+                color: expanded
+                    ? Colors.black
+                    : Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(expanded ? 10 : 100),
+              ),
+              child: contentChild,
             ),
-            child: _TileHeader(
-              dateTime: widget.itemInfo.data.loggedAt,
-              title: title,
-              showDateTime: widget.itemInfo.data.canShowDateTime || expanded,
-              color: expanded ? Colors.transparent : color,
-              icon: Icon(iconData, color: expanded ? color : bgColor),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: expanded ? hideData : showData,
+              child: _TileHeader(
+                dateTime: widget.profileData.loggedAt,
+                title: title,
+                showDateTime: widget.profileData.canShowDateTime || expanded,
+                color: expanded ? Colors.transparent : color,
+                icon: Icon(iconData, color: expanded ? color : bgColor),
+              ),
+            ),
+          ],
+        ),
+        if (!widget.hideBottomDivider)
+          Align(
+            alignment: contentAlignment,
+            child: SizedBox(
+              width: _kAnalyticsItemHeight,
+              height: _kDividerHeight,
+              child: VerticalDivider(thickness: 2),
             ),
           ),
-        ),
       ],
     );
   }
@@ -595,7 +337,7 @@ class _TileHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(100),
             ),
             child: SizedBox.square(
-              dimension: _kAnalyticsRowHeight,
+              dimension: _kAnalyticsItemHeight,
               child: icon,
             ),
           ),
