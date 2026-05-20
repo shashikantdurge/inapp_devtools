@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -137,227 +136,65 @@ class _NetworkRequestListView extends StatefulWidget {
 }
 
 class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
-  late ScrollController scrollController = ScrollController(
-    initialScrollOffset:
-        _filteredProfileDataNotifier.value.length * _kRequestRowHeight,
-  );
-  StreamSubscription? _profileDataStreamSubscription;
-  bool _autoScrollToEnd = true;
-  bool get autoScrollToEnd => _autoScrollToEnd;
-
-  final ValueNotifier<List<NetworkProfileData>> _filteredProfileDataNotifier =
-      ValueNotifier([]);
-  final unreadProfileDataCountNotifier = ValueNotifier<int>(0);
-  int lastLength = 0;
-  set autoScrollToEnd(bool value) {
-    if (value == _autoScrollToEnd) return;
-    _autoScrollToEnd = value;
-    if (value) {
-      unreadProfileDataCountNotifier.value = 0;
-    }
-  }
-
-  double get lastScrollOffset {
-    final totalContentExtent =
-        _filteredProfileDataNotifier.value.length * _kRequestRowHeight;
-    if (!scrollController.hasClients ||
-        totalContentExtent <= scrollController.position.extentInside) {
-      return 0.0;
-    }
-    return totalContentExtent - scrollController.position.extentInside;
-  }
+  late final Stream<List<NetworkProfileData>> _filteredStream;
 
   @override
   void initState() {
     super.initState();
-    _profileDataStreamSubscription = NetworkProfiler.instance
-        .getProfileDataStream()
-        .listen(_onProfileDataReceived);
-    _onProfileDataReceived(
-      NetworkProfiler.instance.getProfileData() ?? [],
-      notify: false,
+    _filteredStream = NetworkProfiler.instance.getProfileDataStream().map(
+      _filterProfileData,
     );
   }
 
-  @override
-  void didUpdateWidget(covariant _NetworkRequestListView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.requestFilters != widget.requestFilters) {
-      _onProfileDataReceived(
-        NetworkProfiler.instance.getProfileData() ?? [],
-        notify: false,
-      );
-    }
+  List<NetworkProfileData> _filterProfileData(List<NetworkProfileData> data) {
+    return data
+        .where(
+          (request) =>
+              widget.requestFilters.every((filter) => filter.matches(request)),
+        )
+        .toList();
   }
 
-  /// Filters the profile data and updates the [_filteredProfileDataNotifier]
-  ///
-  /// Automatically scrolls to the last item if [autoScrollToEnd] is true.
-  void _onProfileDataReceived(
-    List<NetworkProfileData> data, {
-    bool notify = true,
-  }) {
-    _filteredProfileDataNotifier.value = data.where((request) {
-      return widget.requestFilters.every((filter) => filter.matches(request));
-    }).toList();
-
-    if (_filteredProfileDataNotifier.value.length case int newLength
-        when newLength != lastLength) {
-      if (autoScrollToEnd || newLength == 0) {
-        _ensureLastItemVisible();
-      } else {
-        unreadProfileDataCountNotifier.value += newLength - lastLength;
-      }
-      lastLength = newLength;
-    }
-  }
-
-  void _ensureLastItemVisible() {
-    if (scrollController.hasClients) {
-      scrollController.animateTo(
-        lastScrollOffset,
-        duration: Duration(milliseconds: 160),
-        curve: Curves.easeInOut,
-      );
-    }
-    autoScrollToEnd = true;
-  }
-
-  void _onLayoutSizeChanged() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (autoScrollToEnd) {
-        _ensureLastItemVisible();
-      }
-    });
-  }
-
-  void _onUserScroll(UserScrollNotification notification) {
-    if (notification.depth >= 1) return;
-    if (notification.metrics.extentAfter > 0) {
-      autoScrollToEnd = false;
-    } else {
-      autoScrollToEnd = true;
-    }
-  }
-
-  @override
-  void dispose() {
-    _profileDataStreamSubscription?.cancel();
-    _filteredProfileDataNotifier.dispose();
-    unreadProfileDataCountNotifier.dispose();
-    scrollController.dispose();
-    super.dispose();
+  List<NetworkProfileData> _getItems() {
+    return _filterProfileData(NetworkProfiler.instance.getProfileData() ?? []);
   }
 
   @override
   Widget build(BuildContext context) {
-    const decoration = BoxDecoration(
-      border: Border(bottom: BorderSide(color: Color(0xFF303030), width: 1)),
-    );
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Scrollbar(
-          controller: scrollController,
-          interactive: true,
-          trackVisibility: true,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: NotificationListener<SizeChangedLayoutNotification>(
-              onNotification: (_) {
-                _onLayoutSizeChanged();
-                return true;
-              },
-              child: SizeChangedLayoutNotifier(
-                child: NotificationListener<UserScrollNotification>(
-                  onNotification: (notification) {
-                    _onUserScroll(notification);
-                    return false;
-                  },
-                  child: ValueListenableBuilder(
-                    valueListenable: _filteredProfileDataNotifier,
-                    builder: (context, filteredProfileData, child) {
-                      if (filteredProfileData.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'Empty',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        );
-                      }
-                      final length = filteredProfileData.length;
-                      return ListView.builder(
-                        controller: scrollController,
-                        itemExtent: _kRequestRowHeight,
-                        itemCount: length,
-                        itemBuilder: (context, index) {
-                          final data = filteredProfileData[index];
-
-                          return ListenableBuilder(
-                            listenable: data,
-                            builder: (context, child) {
-                              return _NetworkProfileHeaderWidget(
-                                profileData: data,
-                                onTap: () => widget.onItemTap(data),
-                                decoration: decoration,
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
+    return InAppDevToolsScrollView<NetworkProfileData>(
+      key: ObjectKey(widget.requestFilters),
+      getItems: _getItems,
+      itemsStream: _filteredStream,
+      itemBuilder: (context, data) {
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: Color.fromARGB(255, 37, 37, 37),
+                width: 1,
               ),
             ),
           ),
-        ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: ValueListenableBuilder(
-            valueListenable: unreadProfileDataCountNotifier,
-            builder: (context, newProfileDataCount, _) {
-              if (newProfileDataCount == 0) {
-                return const SizedBox.shrink();
-              }
-              return FilledButton(
-                onPressed: _ensureLastItemVisible,
-                style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(
-                    Theme.of(context).colorScheme.secondary,
-                  ),
-                  padding: WidgetStateProperty.all(
-                    EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  ),
-                ),
-                child: Row(
-                  spacing: 4,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.arrow_downward_rounded),
-                    Text(newProfileDataCount.toString()),
-                  ],
-                ),
+          child: ListenableBuilder(
+            listenable: data.item,
+            builder: (context, child) {
+              return _NetworkProfileHeaderWidget(
+                profileData: data.item,
+                onTap: () => widget.onItemTap(data.item),
               );
             },
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
 class _NetworkProfileHeaderWidget extends StatelessWidget {
-  const _NetworkProfileHeaderWidget({
-    required this.profileData,
-    this.onTap,
-    this.decoration = const BoxDecoration(),
-  });
+  const _NetworkProfileHeaderWidget({required this.profileData, this.onTap});
   final EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 8);
   final NetworkProfileData profileData;
   final VoidCallback? onTap;
-  final Decoration decoration;
   Color getColorByMethod(String method) {
     switch (method.toUpperCase()) {
       case 'GET':
@@ -441,58 +278,55 @@ class _NetworkProfileHeaderWidget extends StatelessWidget {
     final statusColor = getColorByStatusCode(profileData.response.statusCode);
     final displayUrl = getDisplayText();
 
-    Widget child = DecoratedBox(
-      decoration: decoration,
-      child: SizedBox(
-        height: _kRequestRowHeight,
-        child: Padding(
-          padding: padding,
-          child: Row(
-            spacing: 8,
-            children: [
-              Expanded(
-                child: Text(
-                  profileData.method.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: getColorByMethod(profileData.method),
+    Widget child = SizedBox(
+      height: _kRequestRowHeight,
+      child: Padding(
+        padding: padding,
+        child: Row(
+          spacing: 8,
+          children: [
+            Expanded(
+              child: Text(
+                profileData.method.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: getColorByMethod(profileData.method),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 7,
+              child: Text(
+                displayUrl,
+                style: TextStyle(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    profileData.statusCodeWithValue,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: statusColor),
                   ),
                 ),
               ),
-              Expanded(
-                flex: 7,
-                child: Text(
-                  displayUrl,
-                  style: TextStyle(fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      profileData.statusCodeWithValue,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: statusColor),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
