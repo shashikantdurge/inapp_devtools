@@ -17,8 +17,15 @@ class IadHtmlDataPreview extends DataPreviewExtension<String> {
   }
 
   @override
-  Widget buildPreview(String data) {
-    return _HtmlPreviewWidget(data: data);
+  Widget buildPreview(BuildContext context, String data) {
+    return CustomScrollView(
+      slivers: [
+        SliverOverlapInjector(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        ),
+        SliverFillRemaining(child: _HtmlPreviewWidget(data: data)),
+      ],
+    );
   }
 
   @override

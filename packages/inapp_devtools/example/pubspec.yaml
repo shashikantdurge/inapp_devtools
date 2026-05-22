@@ -39,6 +39,8 @@ dependencies:
     path: ../../iad_json_data_preview
   iad_image_data_preview:
     path: ../../iad_image_data_preview
+  iad_html_data_preview:
+    path: ../../iad_html_data_preview
 dev_dependencies:
   flutter_test:
     sdk: flutter

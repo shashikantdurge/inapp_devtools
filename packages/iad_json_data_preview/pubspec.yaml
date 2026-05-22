@@ -13,7 +13,8 @@ dependencies:
     sdk: flutter
   inapp_devtools:
     path: ../inapp_devtools
-  flutter_pretty_json: ^0.1.1
+  flutter_pretty_json:
+    path: ../flutter_pretty_json
 
 dev_dependencies:
   flutter_test:

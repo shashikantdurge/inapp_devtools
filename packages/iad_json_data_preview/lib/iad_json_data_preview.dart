@@ -27,11 +27,23 @@ class IadJsonDataPreview extends DataPreviewExtension<String> {
   }
 
   @override
-  Widget buildPreview(String data) {
-    return PrettyJson(
-      encodedJson: data,
-      expandDepth: expandDepth,
-      expanded: expanded,
+  Widget buildPreview(BuildContext context, String data) {
+    return CustomScrollView(
+      slivers: [
+        SliverOverlapInjector(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        ),
+        SliverFillRemaining(
+          child: PrettyJson(
+            encodedJson: data,
+            expandDepth: expandDepth,
+            expanded: expanded,
+            verticalDetails: ScrollableDetails.vertical(
+              controller: PrimaryScrollController.maybeOf(context),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

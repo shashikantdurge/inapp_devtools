@@ -18,8 +18,15 @@ class IadImageDataPreview extends DataPreviewExtension<ImageDataContext> {
   }
 
   @override
-  Widget buildPreview(ImageDataContext data) {
-    return _ImagePreviewWidget(data: data);
+  Widget buildPreview(BuildContext context, ImageDataContext data) {
+    return CustomScrollView(
+      slivers: [
+        SliverOverlapInjector(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        ),
+        SliverToBoxAdapter(child: _ImagePreviewWidget(data: data)),
+      ],
+    );
   }
 }
 
