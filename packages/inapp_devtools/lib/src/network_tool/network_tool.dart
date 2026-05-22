@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
@@ -531,101 +532,91 @@ class _NetworkProfileBodyWidgetState extends State<_NetworkProfileBodyWidget>
 
   @override
   Widget build(BuildContext context) {
+    TypeError;
     final t = InAppDevToolsTheme.of(context);
+
+    final tabbar = TabBar(
+      controller: _tabController,
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
+      padding: const EdgeInsets.only(left: 8, right: 8),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      indicatorSize: TabBarIndicatorSize.label,
+      indicator: UnderlineTabIndicator(
+        borderSide: BorderSide(color: t.appBarMenuUnderlineColor, width: 2),
+        insets: EdgeInsets.zero,
+      ),
+      dividerColor: Colors.transparent,
+      dividerHeight: 1,
+      labelColor: const Color(0xFFE0E0E0),
+      unselectedLabelColor: const Color(0xFF9E9E9E),
+      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      unselectedLabelStyle: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed) ||
+            states.contains(WidgetState.hovered)) {
+          return t.appBarToolSelectorBackgroundColor.withValues(alpha: 0.4);
+        }
+        return null;
+      }),
+      tabs: tabViews.map((tab) => tab.tab).toList(),
+    );
+
+    final tabbarWithActions = PreferredSize(
+      preferredSize: tabbar.preferredSize,
+      child: Row(
+        children: [
+          //Tab Bar
+          Expanded(child: tabbar),
+
+          //Copy button
+          ValueListenableBuilder<String>(
+            valueListenable: _activeNetworkTabNotifier,
+            builder: (context, activeTabName, _) {
+              return ListenableBuilder(
+                listenable: _networkActionsNotifier,
+                builder: (BuildContext context, Widget? child) {
+                  final copyContentCallback = _networkActionsNotifier
+                      .copyContentCallback(activeTabName);
+                  return IconButton(
+                    onPressed: copyContentCallback,
+                    icon: Icon(Icons.copy),
+                  );
+                },
+              );
+            },
+          ),
+
+          //Close button
+          IconButton(onPressed: widget.popCallback, icon: Icon(Icons.close)),
+        ],
+      ),
+    );
 
     return _NetworkDetailWidgetScope(
       activeNetworkTabNotifier: _activeNetworkTabNotifier,
       networkActionsNotifier: _networkActionsNotifier,
-      child: Column(
-        children: [
-          ColoredBox(
-            color: t.appBarBackgroundColor.withValues(alpha: 0.5),
-            child: Column(
-              children: [
-                _NetworkProfileHeaderWidget(
-                  profileData: widget.profileData,
-                  onTap: widget.popCallback,
-                ),
-                Row(
-                  children: [
-                    //Tab Bar
-                    Expanded(
-                      child: TabBar(
-                        controller: _tabController,
-                        isScrollable: true,
-                        tabAlignment: TabAlignment.start,
-                        padding: const EdgeInsets.only(left: 8, right: 8),
-                        labelPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 0,
-                        ),
-                        indicatorSize: TabBarIndicatorSize.label,
-                        indicator: UnderlineTabIndicator(
-                          borderSide: BorderSide(
-                            color: t.appBarMenuUnderlineColor,
-                            width: 2,
-                          ),
-                          insets: EdgeInsets.zero,
-                        ),
-                        dividerColor: Colors.transparent,
-                        dividerHeight: 1,
-                        labelColor: const Color(0xFFE0E0E0),
-                        unselectedLabelColor: const Color(0xFF9E9E9E),
-                        labelStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overlayColor: WidgetStateProperty.resolveWith((states) {
-                          if (states.contains(WidgetState.pressed) ||
-                              states.contains(WidgetState.hovered)) {
-                            return t.appBarToolSelectorBackgroundColor
-                                .withValues(alpha: 0.4);
-                          }
-                          return null;
-                        }),
-                        tabs: tabViews.map((tab) => tab.tab).toList(),
-                      ),
-                    ),
-
-                    //Copy button
-                    ValueListenableBuilder<String>(
-                      valueListenable: _activeNetworkTabNotifier,
-                      builder: (context, activeTabName, _) {
-                        return ListenableBuilder(
-                          listenable: _networkActionsNotifier,
-                          builder: (BuildContext context, Widget? child) {
-                            final copyContentCallback = _networkActionsNotifier
-                                .copyContentCallback(activeTabName);
-                            return IconButton(
-                              onPressed: copyContentCallback,
-                              icon: Icon(Icons.copy),
-                            );
-                          },
-                        );
-                      },
-                    ),
-
-                    //Close button
-                    IconButton(
-                      onPressed: widget.popCallback,
-                      icon: Icon(Icons.close),
-                    ),
-                  ],
-                ),
-              ],
+      child: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            SliverPersistentHeader(
+              pinned: true,
+              floating: false,
+              delegate: _NetworkProfileHeaderDelegate(
+                profileData: widget.profileData,
+                onTap: widget.popCallback,
+                tabBarWithActions: tabbarWithActions,
+              ),
             ),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: tabViews.map((tab) => tab.tabView).toList(),
-            ),
-          ),
-        ],
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: tabViews.map((tab) => tab.tabView).toList(),
+        ),
       ),
     );
   }
@@ -1125,5 +1116,59 @@ mixin _TabStateChangeListener<T extends StatefulWidget> on State<T> {
   void dispose() {
     _activeNetworkTabNotifier?.removeListener(_onActiveTabChanged);
     super.dispose();
+  }
+}
+
+class _NetworkProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _NetworkProfileHeaderDelegate({
+    required this.profileData,
+    required this.tabBarWithActions,
+    required this.onTap,
+  });
+
+  final NetworkProfileData profileData;
+  final Widget tabBarWithActions;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return ColoredBox(
+      color: Color.fromARGB(255, 39, 39, 39),
+      child: Column(
+        children: [
+          Expanded(
+            child: OverflowBox(
+              maxHeight: _kRequestRowHeight,
+              minHeight: _kRequestRowHeight,
+              alignment: Alignment.topCenter,
+              fit: OverflowBoxFit.deferToChild,
+              child: Transform.translate(
+                offset: Offset(0, -shrinkOffset),
+                child: _NetworkProfileHeaderWidget(
+                  profileData: profileData,
+                  onTap: onTap,
+                ),
+              ),
+            ),
+          ),
+          tabBarWithActions,
+        ],
+      ),
+    );
+  }
+
+  @override
+  double get maxExtent => 84;
+
+  @override
+  double get minExtent => 48;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return true;
   }
 }
