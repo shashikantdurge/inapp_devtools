@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:iad_html_data_preview/iad_html_data_preview.dart';
 import 'package:iad_image_data_preview/iad_image_data_preview.dart';
 import 'package:iad_json_data_preview/iad_json_data_preview.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
@@ -34,11 +35,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return InAppDevTools(
       tools: [
+        NetworkTool(
+          dataPreviewExtensions: [
+            IadJsonDataPreview(),
+            IadImageDataPreview(),
+            IadHtmlDataPreview(),
+          ],
+        ),
         const LoggingTool(),
         AnalyticsTool(key: ValueKey('4')),
-        NetworkTool(
-          dataPreviewExtensions: [IadJsonDataPreview(), IadImageDataPreview()],
-        ),
       ],
       child: MaterialApp(
         title: 'API Client',

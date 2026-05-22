@@ -177,6 +177,7 @@ class _InAppDevToolsScrollViewState<E>
     return Scrollbar(
       controller: _scrollController,
       child: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverAnimatedList(
             key: _animatedListKey,

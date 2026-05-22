@@ -1,8 +1,12 @@
 import 'dart:io';
+import 'dart:ui';
 
+import 'dart:collection';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
+import 'package:inapp_devtools/src/common_widgets/subordinate_scroll_controller.dart';
 import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
 import 'package:inapp_devtools/src/network_tool/network_profile_data.dart';
 import 'package:inapp_devtools/src/network_tool/network_profiler.dart';
@@ -512,9 +516,23 @@ class _NetworkProfileBodyWidgetState extends State<_NetworkProfileBodyWidget>
         _Tab(
           tab: Tab(text: 'Error', height: tabHeight),
           name: 'Error',
-          tabView: SingleChildScrollView(
-            padding: EdgeInsets.all(16),
-            child: Text('$error'),
+          tabView: Builder(
+            builder: (context) {
+              return CustomScrollView(
+                key: PageStorageKey<String>('error_tab'),
+                slivers: [
+                  SliverOverlapInjector(
+                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                      context,
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: EdgeInsetsGeometry.all(16),
+                    sliver: SliverToBoxAdapter(child: Text('$error')),
+                  ),
+                ],
+              );
+            },
           ),
         ),
     ];
@@ -531,101 +549,111 @@ class _NetworkProfileBodyWidgetState extends State<_NetworkProfileBodyWidget>
 
   @override
   Widget build(BuildContext context) {
+    TypeError;
     final t = InAppDevToolsTheme.of(context);
+
+    final tabbar = TabBar(
+      controller: _tabController,
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
+      padding: const EdgeInsets.only(left: 8, right: 8),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      indicatorSize: TabBarIndicatorSize.label,
+      indicator: UnderlineTabIndicator(
+        borderSide: BorderSide(color: t.appBarMenuUnderlineColor, width: 2),
+        insets: EdgeInsets.zero,
+      ),
+      dividerColor: Colors.transparent,
+      dividerHeight: 1,
+      labelColor: const Color(0xFFE0E0E0),
+      unselectedLabelColor: const Color(0xFF9E9E9E),
+      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      unselectedLabelStyle: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed) ||
+            states.contains(WidgetState.hovered)) {
+          return t.appBarToolSelectorBackgroundColor.withValues(alpha: 0.4);
+        }
+        return null;
+      }),
+      tabs: tabViews.map((tab) => tab.tab).toList(),
+    );
+
+    final tabbarWithActions = PreferredSize(
+      preferredSize: tabbar.preferredSize,
+      child: Row(
+        children: [
+          //Tab Bar
+          Expanded(child: tabbar),
+
+          //Copy button
+          ValueListenableBuilder<String>(
+            valueListenable: _activeNetworkTabNotifier,
+            builder: (context, activeTabName, _) {
+              return ListenableBuilder(
+                listenable: _networkActionsNotifier,
+                builder: (BuildContext context, Widget? child) {
+                  final copyContentCallback = _networkActionsNotifier
+                      .copyContentCallback(activeTabName);
+                  return IconButton(
+                    onPressed: copyContentCallback,
+                    icon: Icon(Icons.copy),
+                  );
+                },
+              );
+            },
+          ),
+
+          //Close button
+          IconButton(onPressed: widget.popCallback, icon: Icon(Icons.close)),
+        ],
+      ),
+    );
 
     return _NetworkDetailWidgetScope(
       activeNetworkTabNotifier: _activeNetworkTabNotifier,
       networkActionsNotifier: _networkActionsNotifier,
-      child: Column(
-        children: [
-          ColoredBox(
-            color: t.appBarBackgroundColor.withValues(alpha: 0.5),
-            child: Column(
-              children: [
-                _NetworkProfileHeaderWidget(
+      child: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          final handle = NestedScrollView.sliverOverlapAbsorberHandleFor(
+            context,
+          );
+
+          return [
+            SliverOverlapAbsorber(
+              handle: handle,
+              sliver: SliverPersistentHeader(
+                pinned: true,
+                floating: false,
+                delegate: _NetworkProfileHeaderDelegate(
                   profileData: widget.profileData,
                   onTap: widget.popCallback,
+                  tabBarWithActions: tabbarWithActions,
                 ),
-                Row(
-                  children: [
-                    //Tab Bar
-                    Expanded(
-                      child: TabBar(
-                        controller: _tabController,
-                        isScrollable: true,
-                        tabAlignment: TabAlignment.start,
-                        padding: const EdgeInsets.only(left: 8, right: 8),
-                        labelPadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 0,
-                        ),
-                        indicatorSize: TabBarIndicatorSize.label,
-                        indicator: UnderlineTabIndicator(
-                          borderSide: BorderSide(
-                            color: t.appBarMenuUnderlineColor,
-                            width: 2,
-                          ),
-                          insets: EdgeInsets.zero,
-                        ),
-                        dividerColor: Colors.transparent,
-                        dividerHeight: 1,
-                        labelColor: const Color(0xFFE0E0E0),
-                        unselectedLabelColor: const Color(0xFF9E9E9E),
-                        labelStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        unselectedLabelStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overlayColor: WidgetStateProperty.resolveWith((states) {
-                          if (states.contains(WidgetState.pressed) ||
-                              states.contains(WidgetState.hovered)) {
-                            return t.appBarToolSelectorBackgroundColor
-                                .withValues(alpha: 0.4);
-                          }
-                          return null;
-                        }),
-                        tabs: tabViews.map((tab) => tab.tab).toList(),
-                      ),
-                    ),
-
-                    //Copy button
-                    ValueListenableBuilder<String>(
-                      valueListenable: _activeNetworkTabNotifier,
-                      builder: (context, activeTabName, _) {
-                        return ListenableBuilder(
-                          listenable: _networkActionsNotifier,
-                          builder: (BuildContext context, Widget? child) {
-                            final copyContentCallback = _networkActionsNotifier
-                                .copyContentCallback(activeTabName);
-                            return IconButton(
-                              onPressed: copyContentCallback,
-                              icon: Icon(Icons.copy),
-                            );
-                          },
-                        );
-                      },
-                    ),
-
-                    //Close button
-                    IconButton(
-                      onPressed: widget.popCallback,
-                      icon: Icon(Icons.close),
-                    ),
-                  ],
+              ),
+            ),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: tabViews.indexed
+              .map(
+                (tab) => ListenableBuilder(
+                  key: Key(tab.$1.toString()),
+                  listenable: _tabController,
+                  builder: (context, child) {
+                    return SubordinateScrollControllerProvider(
+                      isActive: _tabController.index == tab.$1,
+                      child: tab.$2.tabView,
+                    );
+                  },
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: tabViews.map((tab) => tab.tabView).toList(),
-            ),
-          ),
-        ],
+              )
+              .toList(),
+        ),
       ),
     );
   }
@@ -643,9 +671,12 @@ class _TabViewOverview extends StatefulWidget {
 }
 
 class _TabViewOverviewState extends State<_TabViewOverview>
-    with _TabStateChangeListener {
+    with _TabStateChangeListener, AutomaticKeepAliveClientMixin {
   @override
   String get tabName => widget.tabName;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void onTabActive() {
@@ -688,6 +719,7 @@ class _TabViewOverviewState extends State<_TabViewOverview>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     Duration? responseTime;
     DateTime? startTime;
     DateTime? endTime;
@@ -702,61 +734,69 @@ class _TabViewOverviewState extends State<_TabViewOverview>
     if (startTime != null && endTime != null) {
       responseTime = endTime.difference(startTime);
     }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
-        children: [
-          _KeyValueRowWidget(
-            keyWidget: Text('Method'),
-            valueWidget: Text(widget.profileData.method.toUpperCase()),
-          ),
-          _KeyValueRowWidget(
-            keyWidget: Text('Request URL'),
-            valueWidget: Text(widget.profileData.uri.toString()),
-          ),
-          _KeyValueRowWidget(
-            keyWidget: Text('Status'),
-            valueWidget: Text(widget.profileData.statusCodeWithValue),
-          ),
-          if (widget.profileData.response.headers case {
-            'content-type': [var contentType],
-          })
-            _KeyValueRowWidget(
-              keyWidget: Text('Content Type'),
-              valueWidget: Text(contentType),
-            ),
+    return CustomScrollView(
+      key: PageStorageKey<String>('overview_tab'),
+      slivers: [
+        SliverOverlapInjector(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          sliver: SliverList.list(
+            children: [
+              _KeyValueRowWidget(
+                keyWidget: Text('Method'),
+                valueWidget: Text(widget.profileData.method.toUpperCase()),
+              ),
+              _KeyValueRowWidget(
+                keyWidget: Text('Request URL'),
+                valueWidget: Text(widget.profileData.uri.toString()),
+              ),
+              _KeyValueRowWidget(
+                keyWidget: Text('Status'),
+                valueWidget: Text(widget.profileData.statusCodeWithValue),
+              ),
+              if (widget.profileData.response.headers case {
+                'content-type': [var contentType],
+              })
+                _KeyValueRowWidget(
+                  keyWidget: Text('Content Type'),
+                  valueWidget: Text(contentType),
+                ),
 
-          Divider(),
-          if (responseTime != null)
-            _KeyValueRowWidget(
-              keyWidget: Text('Response Time'),
-              valueWidget: Text('${responseTime.inMilliseconds} ms'),
-            ),
-          if (startTime != null)
-            _KeyValueRowWidget(
-              keyWidget: Text('Start Time'),
-              valueWidget: Text(formatLocalTime(startTime)),
-            ),
-          if (endTime != null)
-            _KeyValueRowWidget(
-              keyWidget: Text('End Time'),
-              valueWidget: Text(formatLocalTime(endTime)),
-            ),
-          Divider(),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () {
-                Clipboard.setData(
-                  ClipboardData(text: widget.profileData.toCurl()),
-                );
-              },
-              icon: Icon(Icons.copy),
-              label: Text('cURL Command'),
-            ),
+              Divider(),
+              if (responseTime != null)
+                _KeyValueRowWidget(
+                  keyWidget: Text('Response Time'),
+                  valueWidget: Text('${responseTime.inMilliseconds} ms'),
+                ),
+              if (startTime != null)
+                _KeyValueRowWidget(
+                  keyWidget: Text('Start Time'),
+                  valueWidget: Text(formatLocalTime(startTime)),
+                ),
+              if (endTime != null)
+                _KeyValueRowWidget(
+                  keyWidget: Text('End Time'),
+                  valueWidget: Text(formatLocalTime(endTime)),
+                ),
+              Divider(),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(
+                      ClipboardData(text: widget.profileData.toCurl()),
+                    );
+                  },
+                  icon: Icon(Icons.copy),
+                  label: Text('cURL Command'),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -799,7 +839,10 @@ class _TabViewHeaders extends StatefulWidget {
 }
 
 class _TabViewHeadersState extends State<_TabViewHeaders>
-    with _TabStateChangeListener {
+    with _TabStateChangeListener, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   String get tabName => widget.tabName;
 
@@ -834,73 +877,82 @@ class _TabViewHeadersState extends State<_TabViewHeaders>
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ExpansionTile(
-            title: Text('General'),
-            initiallyExpanded: generalTabExpanded,
-            onExpansionChanged: (expanded) {
-              setState(() {
-                generalTabExpanded = expanded;
-              });
-            },
-            children: [
-              _KeyValueRowWidget(
-                keyWidget: Text('Method'),
-                valueWidget: Text(widget.profileData.method.toUpperCase()),
-              ),
-              _KeyValueRowWidget(
-                keyWidget: Text('Request URL'),
-                valueWidget: Text(widget.profileData.uri.toString()),
-              ),
-              _KeyValueRowWidget(
-                keyWidget: Text('Status Code'),
-                valueWidget: Text(widget.profileData.statusCodeWithValue),
-              ),
-            ],
-          ),
-
-          if (widget.profileData.response.headers
-              case Map<String, List<String>> headers)
+    super.build(context);
+    return CustomScrollView(
+      key: PageStorageKey<String>('headers_tab'),
+      slivers: [
+        SliverOverlapInjector(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        ),
+        SliverList.list(
+          children: [
             ExpansionTile(
-              title: Text('Response Headers'),
-              initiallyExpanded: responseHeadersTabExpanded,
+              key: PageStorageKey<String>('general_tab'),
+              title: Text('General'),
+              initiallyExpanded: generalTabExpanded,
               onExpansionChanged: (expanded) {
                 setState(() {
-                  responseHeadersTabExpanded = expanded;
+                  generalTabExpanded = expanded;
                 });
               },
               children: [
-                for (final header in headers.entries)
-                  _KeyValueRowWidget(
-                    keyWidget: Text(header.key),
-                    valueWidget: Text(header.value.join(', ')),
-                  ),
+                _KeyValueRowWidget(
+                  keyWidget: Text('Method'),
+                  valueWidget: Text(widget.profileData.method.toUpperCase()),
+                ),
+                _KeyValueRowWidget(
+                  keyWidget: Text('Request URL'),
+                  valueWidget: Text(widget.profileData.uri.toString()),
+                ),
+                _KeyValueRowWidget(
+                  keyWidget: Text('Status Code'),
+                  valueWidget: Text(widget.profileData.statusCodeWithValue),
+                ),
               ],
             ),
 
-          if (widget.profileData.request.headers
-              case Map<String, List<String>> headers)
-            ExpansionTile(
-              title: Text('Request Headers'),
-              initiallyExpanded: requestHeadersTabExpanded,
-              onExpansionChanged: (expanded) {
-                setState(() {
-                  requestHeadersTabExpanded = expanded;
-                });
-              },
-              children: [
-                for (final header in headers.entries)
-                  _KeyValueRowWidget(
-                    keyWidget: Text(header.key),
-                    valueWidget: Text(header.value.join(', ')),
-                  ),
-              ],
-            ),
-        ],
-      ),
+            if (widget.profileData.response.headers
+                case Map<String, List<String>> headers)
+              ExpansionTile(
+                key: PageStorageKey<String>('response_headers_tab'),
+                title: Text('Response Headers'),
+                initiallyExpanded: responseHeadersTabExpanded,
+                onExpansionChanged: (expanded) {
+                  setState(() {
+                    responseHeadersTabExpanded = expanded;
+                  });
+                },
+                children: [
+                  for (final header in headers.entries)
+                    _KeyValueRowWidget(
+                      keyWidget: Text(header.key),
+                      valueWidget: Text(header.value.join(', ')),
+                    ),
+                ],
+              ),
+
+            if (widget.profileData.request.headers
+                case Map<String, List<String>> headers)
+              ExpansionTile(
+                key: PageStorageKey<String>('request_headers_tab'),
+                title: Text('Request Headers'),
+                initiallyExpanded: requestHeadersTabExpanded,
+                onExpansionChanged: (expanded) {
+                  setState(() {
+                    requestHeadersTabExpanded = expanded;
+                  });
+                },
+                children: [
+                  for (final header in headers.entries)
+                    _KeyValueRowWidget(
+                      keyWidget: Text(header.key),
+                      valueWidget: Text(header.value.join(', ')),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -970,25 +1022,42 @@ class __DataPreviewTabViewState extends State<_DataPreviewTabView>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (_previewExtensionData != null &&
-        _supportedDataPreviewExtension != null) {
-      return _supportedDataPreviewExtension!.buildPreview(
-        _previewExtensionData,
-      );
-    }
-    return DefaultTextStyle(
-      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        spacing: 8,
-        children: [
-          Text.rich(
-            TextSpan(children: [TextSpan(text: 'Data Preview not available')]),
-          ),
-          Text('Content Type: ${widget.contentType?.mimeType ?? 'unknown'}'),
-          Text('Data Size: ${readableSize(widget.data.length)}'),
-        ],
-      ),
+    return Builder(
+      builder: (context) {
+        if (_previewExtensionData != null &&
+            _supportedDataPreviewExtension != null) {
+          return _supportedDataPreviewExtension!.buildPreview(
+            context,
+            _previewExtensionData,
+          );
+        }
+        return CustomScrollView(
+          key: PageStorageKey<String>('data_preview_tab'),
+          slivers: [
+            SliverOverlapInjector(
+              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+            ),
+            DefaultTextStyle(
+              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 8,
+                children: [
+                  Text.rich(
+                    TextSpan(
+                      children: [TextSpan(text: 'Data Preview not available')],
+                    ),
+                  ),
+                  Text(
+                    'Content Type: ${widget.contentType?.mimeType ?? 'unknown'}',
+                  ),
+                  Text('Data Size: ${readableSize(widget.data.length)}'),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1125,5 +1194,59 @@ mixin _TabStateChangeListener<T extends StatefulWidget> on State<T> {
   void dispose() {
     _activeNetworkTabNotifier?.removeListener(_onActiveTabChanged);
     super.dispose();
+  }
+}
+
+class _NetworkProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _NetworkProfileHeaderDelegate({
+    required this.profileData,
+    required this.tabBarWithActions,
+    required this.onTap,
+  });
+
+  final NetworkProfileData profileData;
+  final Widget tabBarWithActions;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return ColoredBox(
+      color: Color.fromARGB(255, 39, 39, 39),
+      child: Column(
+        children: [
+          Expanded(
+            child: OverflowBox(
+              maxHeight: _kRequestRowHeight,
+              minHeight: _kRequestRowHeight,
+              alignment: Alignment.topCenter,
+              fit: OverflowBoxFit.deferToChild,
+              child: Transform.translate(
+                offset: Offset(0, -shrinkOffset),
+                child: _NetworkProfileHeaderWidget(
+                  profileData: profileData,
+                  onTap: onTap,
+                ),
+              ),
+            ),
+          ),
+          tabBarWithActions,
+        ],
+      ),
+    );
+  }
+
+  @override
+  double get maxExtent => 84;
+
+  @override
+  double get minExtent => 48;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return true;
   }
 }

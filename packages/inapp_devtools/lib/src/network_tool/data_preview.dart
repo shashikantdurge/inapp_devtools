@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 @immutable
 abstract class DataPreviewExtension<T> {
   T? mayInitialize(DataContext dataContext);
-  Widget buildPreview(T data);
+  Widget buildPreview(BuildContext context, T data);
   VoidCallback? copyContentCallback(T data) => null;
 }
 
@@ -42,19 +42,25 @@ class DefaultDataPreviewExtension
   }
 
   @override
-  Widget buildPreview(DefaultPreviewExtensionData data) {
-    switch (data) {
-      case DefaultTextPreviewExtensionData():
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(data.text),
-        );
-      case DefaultImagePreviewExtensionData():
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Image.memory(data.image, fit: BoxFit.contain),
-        );
-    }
+  Widget buildPreview(BuildContext context, DefaultPreviewExtensionData data) {
+    Widget child = switch (data) {
+      DefaultTextPreviewExtensionData() => SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(data.text),
+      ),
+      DefaultImagePreviewExtensionData() => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Image.memory(data.image, fit: BoxFit.contain),
+      ),
+    };
+    return CustomScrollView(
+      slivers: [
+        SliverOverlapInjector(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        ),
+        SliverToBoxAdapter(child: child),
+      ],
+    );
   }
 
   @override

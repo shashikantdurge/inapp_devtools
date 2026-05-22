@@ -2,122 +2,47 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show ChangeNotifier;
 
-import 'network_profiler.dart';
-
-class NetworkProfileData with ChangeNotifier {
-  final String method;
-  final Uri uri;
-  final NetworkProfileRequestData request;
-  final NetworkProfileResponseData response;
-
-  NetworkProfileData({required this.method, required this.uri})
-    : request = NetworkProfileRequestData(method: method, uri: uri),
-      response = NetworkProfileResponseData(method: method, uri: uri) {
-    request.requestStartedAt = DateTime.now();
-    NetworkProfiler.instance.profileData(this);
-  }
-
-  Map toJson() {
-    return {
-      'method': method,
-      'uri': uri.toString(),
-      'request': request.toJson(),
-      'response': response.toJson(),
-    };
-  }
-
-  void sendDataToProfiler() {
-    notifyListeners();
-  }
+abstract class NetworkProfileData extends ChangeNotifier {
+  String get method;
+  Uri get uri;
+  NetworkProfileRequestData get request;
+  NetworkProfileResponseData get response;
 }
 
-class NetworkProfileRequestData {
-  final Uri uri;
-  final String method;
-  DateTime? requestStartedAt;
-  DateTime? requestEndedAt;
-  bool requestInProgress = true;
-  Map<String, List<String>>? headers;
-  Map? connectionInfo;
-  int? contentLength;
-  List<String>? cookies;
-  bool? followRedirects;
-  int? maxRedirects;
-  bool? persistentConnection;
-  String? error;
-  List<int> requestBody = [];
-
-  NetworkProfileRequestData({
-    required this.method,
-    required this.uri,
-    this.headers,
-    this.connectionInfo,
-    this.contentLength,
-    this.cookies,
-    this.followRedirects,
-    this.maxRedirects,
-    this.persistentConnection,
-  });
-
-  Map toJson() {
-    return {
-      'uri': uri.toString(),
-      'method': method,
-      'requestStartedAt': requestStartedAt?.toIso8601String(),
-      'requestEndedAt': requestEndedAt?.toIso8601String(),
-      'requestInProgress': requestInProgress,
-      'headers': headers,
-      'connectionInfo': connectionInfo,
-      'contentLength': contentLength,
-      'cookies': cookies,
-      'followRedirects': followRedirects,
-      'maxRedirects': maxRedirects,
-      'persistentConnection': persistentConnection,
-      'error': error,
-      'requestBody': requestBody,
-    };
-  }
+abstract class NetworkProfileRequestData {
+  Uri get uri;
+  String get method;
+  DateTime? get requestStartedAt;
+  DateTime? get requestEndedAt;
+  bool get requestInProgress;
+  Map<String, List<String>>? get headers;
+  Map<dynamic, dynamic>? get connectionInfo;
+  int? get contentLength;
+  List<String>? get cookies;
+  bool? get followRedirects;
+  int? get maxRedirects;
+  bool? get persistentConnection;
+  String? get error;
+  List<int> get requestBody;
 }
 
-class NetworkProfileResponseData {
-  final Uri uri;
-  final String method;
-  DateTime? responseStartedAt;
-  DateTime? responseEndedAt;
-  bool? responseInProgress;
-  Map<String, List<String>>? headers;
-  Map? connectionInfo;
-  int? contentLength;
-  List<String>? cookies;
-  bool? isRedirect;
-  String? reasonPhrase;
-  int? statusCode;
-  List<Map>? redirects;
-  bool? persistentConnection;
-  String? error;
-  List<int> responseBody = [];
-
-  NetworkProfileResponseData({required this.uri, required this.method});
-
-  Map toJson() {
-    return {
-      'uri': uri.toString(),
-      'method': method,
-      'responseStartedAt': responseStartedAt?.toIso8601String(),
-      'responseEndedAt': responseEndedAt?.toIso8601String(),
-      'responseInProgress': responseInProgress,
-      'headers': headers,
-      'connectionInfo': connectionInfo,
-      'contentLength': contentLength,
-      'cookies': cookies,
-      'isRedirect': isRedirect,
-      'reasonPhrase': reasonPhrase,
-      'redirects': redirects,
-      'persistentConnection': persistentConnection,
-      'error': error,
-      // 'responseBody': utf8.decode(responseBody),
-    };
-  }
+abstract class NetworkProfileResponseData {
+  Uri get uri;
+  String get method;
+  DateTime? get responseStartedAt;
+  DateTime? get responseEndedAt;
+  bool? get responseInProgress;
+  Map<String, List<String>>? get headers;
+  Map<dynamic, dynamic>? get connectionInfo;
+  int? get contentLength;
+  List<String>? get cookies;
+  bool? get isRedirect;
+  String? get reasonPhrase;
+  int? get statusCode;
+  List<Map<dynamic, dynamic>>? get redirects;
+  bool? get persistentConnection;
+  String? get error;
+  List<int> get responseBody;
 }
 
 extension NetworkProfileDataXUtils on NetworkProfileData {
