@@ -17,6 +17,8 @@ class PrettyJson extends StatefulWidget {
       fontWeight: FontWeight.normal,
     ),
     this.expandDepth,
+    this.verticalDetails = const ScrollableDetails.vertical(),
+    this.horizontalDetails = const ScrollableDetails.horizontal(),
     super.key,
   });
 
@@ -25,6 +27,9 @@ class PrettyJson extends StatefulWidget {
 
   /// Whether the tree is expanded. Defaults to true.
   final bool expanded;
+
+  final ScrollableDetails verticalDetails;
+  final ScrollableDetails horizontalDetails;
 
   /// Text style applied to the tree content.
   final TextStyle textStyle;
@@ -55,8 +60,6 @@ class _PrettyJsonState extends State<PrettyJson> {
   late List<TreeViewNode<JsonTreeData>> _treeNodes;
   double get indentationWidth => _indentationWidth;
   TreeViewController treeViewController = TreeViewController();
-  final ScrollController horizontalScrollController = ScrollController();
-  final ScrollController verticalScrollController = ScrollController();
   @override
   void initState() {
     super.initState();
@@ -131,23 +134,16 @@ class _PrettyJsonState extends State<PrettyJson> {
 
   @override
   Widget build(BuildContext context) {
-    return Scrollbar(
-      controller: verticalScrollController,
-      child: DefaultTextStyle(
-        style: widget.textStyle,
-        child: TreeView(
-          controller: treeViewController,
-          treeRowBuilder: _buildTreeRow,
-          treeNodeBuilder: _buildTreeNode,
-          indentation: TreeViewIndentationType.none,
-          horizontalDetails: ScrollableDetails.horizontal(
-            controller: horizontalScrollController,
-          ),
-          verticalDetails: ScrollableDetails.vertical(
-            controller: verticalScrollController,
-          ),
-          tree: _treeNodes,
-        ),
+    return DefaultTextStyle(
+      style: widget.textStyle,
+      child: TreeView(
+        controller: treeViewController,
+        treeRowBuilder: _buildTreeRow,
+        treeNodeBuilder: _buildTreeNode,
+        indentation: TreeViewIndentationType.none,
+        verticalDetails: widget.verticalDetails,
+        horizontalDetails: widget.horizontalDetails,
+        tree: _treeNodes,
       ),
     );
   }
@@ -196,9 +192,7 @@ class _PrettyJsonState extends State<PrettyJson> {
     final anchorRect = Rect.fromLTWH(
       globalTapPosition?.dx ??
           treeObject.localToGlobal(Offset.zero, ancestor: overlayObject).dx,
-      treeObject.localToGlobal(Offset(0, rowTop), ancestor: overlayObject).dy -
-          verticalScrollController.offset +
-          rowHeight,
+      treeObject.localToGlobal(Offset(0, rowTop), ancestor: overlayObject).dy,
       treeObject.size.width,
       rowHeight,
     );
@@ -614,12 +608,5 @@ class _PrettyJsonState extends State<PrettyJson> {
 
   List<Widget> _buildClosingBracket(BracketTreeData node) {
     return [Text(node.value, style: TextStyle(color: _jsonTheme.bracketColor))];
-  }
-
-  @override
-  void dispose() {
-    horizontalScrollController.dispose();
-    verticalScrollController.dispose();
-    super.dispose();
   }
 }

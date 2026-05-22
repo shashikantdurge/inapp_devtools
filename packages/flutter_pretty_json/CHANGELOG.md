@@ -1,5 +1,8 @@
+## 0.1.2
+* PrettyJson widget accepts optional params verticalDetails and horizontalDetails which includes ScrollController as well
+
 ## 0.1.1
-Added expand all and collapse all actions on Map & Array objects
+* Added expand all and collapse all actions on Map & Array objects
 
 ## 0.1.0
 
