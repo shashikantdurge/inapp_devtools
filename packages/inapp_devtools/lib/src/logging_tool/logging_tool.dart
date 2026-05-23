@@ -2,9 +2,39 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
-import 'package:intl/intl.dart';
+import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
 
+/// In-app dev tool for inspecting logs from the `package:logging` API.
+///
+/// ## Example
+///
+/// ```dart
+/// void main() {
+///
+///   //Required if you're triggering logs before the devtools are mounted.
+///   LoggingProfiler.ensureInitialized();
+///
+///   runApp(
+///     InAppDevTools(
+///       tools: const [LoggingTool(), NetworkTool(), AnalyticsTool()],
+///       child: MaterialApp(home: MyApp()),
+///     ),
+///   );
+/// }
+///
+/// //Elsewhere in your app:
+/// final logger = Logger('my_feature');
+/// logger.info('User signed in');
+/// logger.warning('Cache miss', error);
+/// logger.severe('Request failed', error, stackTrace);
+/// ```
+///
+/// See also:
+/// * [InAppDevTools] — host widget and tool registration.
+/// * [LoggingProfiler] — attaches to [Logger.root] and stores [LogRecord]s.
+/// * [Logger] — `package:logging` logger used by application code.
 class LoggingTool extends StatefulWidget with InAppDevToolsItem {
+  /// Creates the Logging devtools panel.
   const LoggingTool({super.key});
 
   @override
@@ -20,7 +50,7 @@ class LoggingTool extends StatefulWidget with InAppDevToolsItem {
 
   @override
   void disposeTool() {
-    LoggingProfiler.instance.dispose();
+    LoggingProfiler.instance = null;
   }
 }
 
@@ -206,10 +236,6 @@ class _LogTileHeader extends StatelessWidget {
 
   static const _mutedColor = Color(0xFF958ea0);
 
-  static String _formatTime(DateTime time) {
-    return DateFormat('HH:mm:ss.SSS').format(time);
-  }
-
   String? _stackTraceCriticalLine() {
     if (record.stackTrace?.toString() case String input) {
       final bracketIndex = input.indexOf('(');
@@ -275,7 +301,10 @@ class _LogTileHeader extends StatelessWidget {
                       style: levelLabelStyle,
                     ),
                     const TextSpan(text: '  '),
-                    TextSpan(text: _formatTime(record.time), style: mutedStyle),
+                    TextSpan(
+                      text: formatLocalTime(record.time),
+                      style: mutedStyle,
+                    ),
                     if (record.loggerName.isNotEmpty) ...[
                       const TextSpan(text: '  '),
                       TextSpan(text: record.loggerName, style: mutedStyle),
@@ -316,7 +345,7 @@ class _LogTileHeader extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    _formatTime(record.time),
+                    formatLocalTime(record.time),
                     maxLines: 1,
                     style: mutedStyle,
                   ),

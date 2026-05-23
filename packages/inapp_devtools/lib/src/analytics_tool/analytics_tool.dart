@@ -10,15 +10,57 @@ import 'analytics_profile_data.dart';
 const _kAnalyticsItemHeight = 36.0;
 const _kAnalyticsParamsHeight = 120.0;
 const _kDividerHeight = 6.0;
-const numerator = 1;
-const denominator = 3;
-const part = 2 / (denominator + numerator);
+const _numerator = 1;
+const _denominator = 3;
+const _flexSinglePartValue = 2 / (_denominator + _numerator);
 
-/// Shows analytics entries captured by [AnalyticsProfiler].
+/// In-app dev tool for inspecting analytics calls recorded from your app.
 ///
-/// This widget does not include internal page navigation and renders a single
-/// expandable list where each tile can reveal event parameters.
+/// ## Recording events
+///
+/// From application code, call [AnalyticsProfiler.instance] (after the profiler
+/// is initialized). Supported calls mirror common analytics SDKs:
+///
+/// * [AnalyticsProfiler.logEvent] — named event with optional parameters.
+/// * [AnalyticsProfiler.logScreenView] — screen name with optional parameters.
+/// * [AnalyticsProfiler.setUserId] — set or clear the current user id.
+/// * [AnalyticsProfiler.setUserProperty] — a single user property.
+/// * [AnalyticsProfiler.setGlobalParameters] — key–value map applied globally.
+///
+/// ## Integration with real analytics
+///
+/// This package does not replace Firebase Analytics, Amplitude, or similar
+/// services. Forward calls from your analytics wrapper to
+/// [AnalyticsProfiler.instance] in debug builds (or always) so the same
+/// payloads appear in devtools while production SDKs still receive them.
+///
+/// # Example
+///
+/// ```dart
+/// void main() {
+///   //Required if you're triggering analytics events before the devtools are mounted.
+///   AnalyticsProfiler.ensureInitialized();
+///
+///   runApp(
+///     InAppDevTools(
+///       tools: const [AnalyticsTool(), NetworkTool(), LoggingTool()],
+///       child: MaterialApp(home: MyApp()),
+///     ),
+///   );
+/// }
+///
+/// // Elsewhere in your app:
+/// AnalyticsProfiler.instance.logEvent(
+///   'button_tap',
+///   parameters: {'id': 'checkout'},
+/// );
+/// ```
+///
+/// See also:
+/// * [InAppDevTools] — host widget and tool registration.
+/// * [AnalyticsProfiler] — API used to record entries.
 class AnalyticsTool extends StatefulWidget with InAppDevToolsItem {
+  /// Creates the Analytics devtools panel.
   const AnalyticsTool({super.key});
 
   @override
@@ -165,7 +207,10 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    const contentAlignment = Alignment(numerator * part - 1, -1);
+    const contentAlignment = Alignment(
+      _numerator * _flexSinglePartValue - 1,
+      -1,
+    );
     Widget contentChild;
     Color color;
     String title;
@@ -319,7 +364,7 @@ class _TileHeader extends StatelessWidget {
         // crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            flex: numerator,
+            flex: _numerator,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
@@ -346,7 +391,7 @@ class _TileHeader extends StatelessWidget {
             ),
           ),
           Expanded(
-            flex: denominator,
+            flex: _denominator,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
               child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),

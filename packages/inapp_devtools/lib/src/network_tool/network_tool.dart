@@ -8,19 +8,65 @@ import 'package:inapp_devtools/inapp_devtools.dart';
 import 'package:inapp_devtools/src/common_widgets/subordinate_scroll_controller.dart';
 import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
 import 'package:inapp_devtools/src/network_tool/network_profile_data.dart';
-import 'package:inapp_devtools/src/network_tool/network_profiler.dart';
 import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart';
 
 const _kRequestRowHeight = 36.0;
 
+/// In-app dev tool for inspecting HTTP traffic captured from your Flutter app.
+///
+/// * [dataPreviewExtensions] - Optional plugins that render custom view for request or response
+///   bodies (for example JSON, HTML, or image views from
+///   companion packages). Extensions are tried in order; the built-in default
+///   preview is used when none match. Implement [DataPreviewExtension] for
+///   custom content types.
+///
+/// * [networkRequestFilters] - Control which requests appear in the NetworkTool ListView.
+///
+/// ## HttpOverrides
+///
+/// [initTool] sets [HttpOverrides.global] for profiling. [disposeTool] restores
+/// it to `null` when the devtools host is removed. If your app already uses
+/// custom [HttpOverrides] such as mockito, only one global override can be active—compose.
+/// Raise a issue if you need both behaviors in your app [here](https://github.com/shashikantdurge/inapp_devtools/issues).
+///
+/// ## Example
+///
+/// ```dart
+/// InAppDevTools(
+///   tools: [
+///     NetworkTool(
+///       dataPreviewExtensions: [
+///         IadJsonDataPreview(),
+///         IadImageDataPreview(),
+///         IadHtmlDataPreview(),
+///       ],
+///       networkRequestFilters: [
+///         NetworkProfileDataFilter.excludeDomains({'localhost'}),
+///       ],
+///     ),
+///     const LoggingTool(),
+///   ],
+///   child: MaterialApp(home: MyApp()),
+/// )
+/// ```
+///
+/// See also:
+/// * [InAppDevTools] — host widget and tool registration.
+/// * [NetworkProfileDataFilter] — list filtering.
+/// * [DataPreviewExtension] — custom body rendering.
+/// * [NetworkProfiler] — low-level access to captured profile data.
 class NetworkTool extends StatefulWidget with InAppDevToolsItem {
+  /// Creates the Network devtools panel.
   const NetworkTool({
     super.key,
     this.dataPreviewExtensions = const [],
     this.networkRequestFilters = const [],
   });
 
+  /// Preview plugins for request/response body tabs in the detail view.
   final List<DataPreviewExtension> dataPreviewExtensions;
+
+  /// Filters applied to the request list; all requests are shown when it's empty.
   final List<NetworkProfileDataFilter> networkRequestFilters;
 
   @override

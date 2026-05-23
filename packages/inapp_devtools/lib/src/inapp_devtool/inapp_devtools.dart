@@ -1,8 +1,4 @@
-/// In-app devtools overlay: a draggable panel with multiple tools, each with a
-/// standard app bar and body ([InAppDevToolsScaffold] + [InAppDevToolsAppBar]).
-///
-/// Use [InAppDevTools.of] / [InAppDevTools.panelModeOf] from
-/// descendants to read [InAppDevToolsController] and drive [InAppDevToolsPanelWindowMode].
+/// In-app devtools overlay: draggable panel, tool picker, and shared chrome.
 library;
 
 import 'dart:math';
@@ -16,7 +12,7 @@ import 'package:inapp_devtools/inapp_devtools.dart';
 ///
 /// Eg.
 /// ```dart
-/// class CustomToolWidget extends StatefulWidget implements InAppDevToolsItem {
+/// class CustomToolWidget extends StatefulWidget with InAppDevToolsItem {
 ///   const CustomToolWidget({super.key});
 ///
 ///   @override
@@ -32,22 +28,50 @@ mixin InAppDevToolsItem on Widget {
   void disposeTool() {}
 }
 
-/// Defines the different window states of the in-app devtools panel.
-/// Similar to window modes in desktop.
+/// How much of the screen the devtools overlay occupies.
 enum InAppDevToolsPanelWindowMode {
-  /// Tool is hidden, but a small button is visible to open it.
+  /// Only the floating action button is shown; tap it to open the panel.
   minimized,
 
-  /// Tool is visible partially
+  /// The panel uses roughly one third of the available height.
   windowed,
 
-  /// Tool is visible at maximum size
+  /// The panel fills the safe area.
   maximized,
 }
 
-/// Hosts the in-app devtools overlay and exposes [InAppDevToolsController] via
-/// [of] / [panelModeOf].
+/// Root widget that overlays in-app developer tools on top of your application.
+///
+/// * [tools] - List of tools to display in the devtools overlay.
+/// * [initialSelectedToolIndex] - Index of the tool to select when the panel is opened.
+/// * [theme] - Theme for the devtools overlay.
+/// * [color] - Color for the devtools overlay.
+/// * [child] - The application rendered underneath the devtools overlay.
+///
+/// # Usage
+///
+/// ```dart
+/// void main() {
+///   runApp(
+///     InAppDevTools(
+///       child: MaterialApp(
+///         home: MyHomePage(),
+///       ),
+///     ),
+///   );
+/// }
+/// ```
+///
+/// See also:
+/// * [InAppDevToolsItem] — contract for [tools] entries.
+/// * [NetworkTool] - Logs network calls
+/// * [LoggingTool] - Logs [Logger] records
+/// * [AnalyticsTool] - Logs analytics events
 class InAppDevTools extends StatefulWidget {
+  /// Creates a devtools host that overlays [child].
+  ///
+  /// [tools] must contain at least one [InAppDevToolsItem].
+  /// [initialSelectedToolIndex] must be in `0 .. tools.length - 1`.
   InAppDevTools({
     super.key,
     this.tools = const [NetworkTool(), AnalyticsTool(), LoggingTool()],
@@ -62,35 +86,44 @@ class InAppDevTools extends StatefulWidget {
          'initialSelectedToolIndex must be between 0 and tools.length - 1',
        );
 
-  /// Registered tools (tabs); order matches horizontal picker indices.
+  /// DevTools panels registered with this host, in tab order.
   final List<InAppDevToolsItem> tools;
 
-  /// Index into [tools] shown when the panel is not collapsed.
+  /// Which [tools] entry is selected when the panel is first opened.
   final int initialSelectedToolIndex;
 
-  /// Overrides default chrome from [InAppDevToolsThemeData.dark].
+  /// Visual theme for the overlay; defaults to [InAppDevToolsThemeData.dark].
   final InAppDevToolsThemeData? theme;
 
-  /// Optional accent for minimized FAB and panel outline; defaults come from [theme].
+  /// Accent color for the minimized FAB and panel border when [theme] does not
+  /// specify them.
   final Color? color;
 
+  /// The application rendered underneath the devtools overlay.
   final Widget? child;
 
-  /// DevTools controller from the nearest [InAppDevTools] ancestor.
+  /// The [InAppDevToolsController] for the nearest [InAppDevTools] ancestor.
+  ///
+  /// Use this to read or update [InAppDevToolsController.panelMode] and
+  /// [InAppDevToolsController.selectedToolIndex]. The returned controller
+  /// is a [Listenable]; wrap UI in [ListenableBuilder] or listen in
+  /// [State] when reacting to changes.
+  ///
+  /// Must be called from a context below [InAppDevTools] (for example inside
+  /// a tool widget built as a child of this host).
+  ///
+  /// It's rare to use this directly.
   static InAppDevToolsController of(BuildContext context) {
     return context
         .dependOnInheritedWidgetOfExactType<_InAppDevToolsControllerProvider>()!
         .notifier!;
   }
 
-  /// Current [InAppDevToolsPanelWindowMode] from the nearest [InAppDevTools].
-  static InAppDevToolsPanelWindowMode panelModeOf(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<_InAppDevToolsControllerProvider>()!
-        .notifier!
-        .panelMode;
-  }
-
+  /// Shared per-overlay state store for tool widgets.
+  ///
+  /// Keys are [Type] values; use [ToolStateNotifier.set] and
+  /// [ToolStateNotifier.get] from tool code. Prefer this over static globals
+  /// when state should persist across tab switches but not across app restarts.
   static ToolStateNotifier toolStateNotifier(BuildContext context) {
     return context
         .dependOnInheritedWidgetOfExactType<_ToolStateProvider>()!
@@ -520,6 +553,7 @@ class InAppDevToolsController extends ChangeNotifier {
   }
 }
 
+/// Provides a [ToolStateNotifier] scoped to the devtools overlay.
 class _ToolStateProvider extends InheritedNotifier<ToolStateNotifier> {
   const _ToolStateProvider({required super.notifier, required super.child});
 
@@ -529,17 +563,24 @@ class _ToolStateProvider extends InheritedNotifier<ToolStateNotifier> {
   }
 }
 
+/// Typed key–value store scoped to one [InAppDevTools] overlay.
+///
+/// Obtained via [InAppDevTools.toolStateNotifier]. Notifies listeners when
+/// [set] is called with `notify: true` (the default).
 class ToolStateNotifier extends ChangeNotifier {
   final Map<Type, Object?> _state = {};
 
+  /// Whether a value has been stored for type [T].
   bool has<T>() {
     return _state.containsKey(T);
   }
 
+  /// Returns the value for type [T], or `null` if none was [set].
   T? get<T>() {
     return _state[T] as T?;
   }
 
+  /// Stores [value] under the key [T]. Pass `null` only when [T] is nullable.
   void set<T>(T? value, {bool notify = true}) {
     assert(
       (T != Null && value == null) || value != null,
@@ -549,54 +590,5 @@ class ToolStateNotifier extends ChangeNotifier {
     if (notify) {
       notifyListeners();
     }
-  }
-}
-
-class ToolStateListenableBuilder<T> extends StatefulWidget {
-  const ToolStateListenableBuilder({
-    super.key,
-    required this.builder,
-    this.initialValue,
-  });
-  final Widget Function(BuildContext context, T? value) builder;
-  final T? initialValue;
-
-  @override
-  State<ToolStateListenableBuilder> createState() =>
-      _ToolStateListenableBuilderState<T>();
-}
-
-class _ToolStateListenableBuilderState<T>
-    extends State<ToolStateListenableBuilder<T>> {
-  T? _value;
-  late ToolStateNotifier _toolsStateProvider;
-  void _onToolStateChanged() {
-    setState(() {
-      _value = InAppDevTools.toolStateNotifier(context).get<T>();
-    });
-  }
-
-  @override
-  void didChangeDependencies() {
-    _toolsStateProvider = InAppDevTools.toolStateNotifier(context);
-    if (_toolsStateProvider.has<T>()) {
-      _value = _toolsStateProvider.get<T>();
-    } else {
-      _value = widget.initialValue;
-    }
-    _toolsStateProvider.removeListener(_onToolStateChanged);
-    _toolsStateProvider.addListener(_onToolStateChanged);
-    super.didChangeDependencies();
-  }
-
-  @override
-  void dispose() {
-    _toolsStateProvider.removeListener(_onToolStateChanged);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return widget.builder(context, _value);
   }
 }

@@ -5,7 +5,10 @@ import 'analytics_profile_data.dart';
 abstract class AnalyticsProfiler {
   static AnalyticsProfiler? _instance;
 
-  /// The instance used to record analytics profile entries for DevTools.
+  /// The active profiler used to record and read analytics entries.
+  ///
+  /// Throws if [ensureInitialized] has not been called and [instance] was not
+  /// set to a custom implementation.
   static AnalyticsProfiler get instance {
     if (_instance == null) {
       throw Exception(
@@ -15,37 +18,49 @@ abstract class AnalyticsProfiler {
     return _instance!;
   }
 
+  /// Replaces the active profiler, disposing the previous one when present.
   static set instance(AnalyticsProfiler? value) {
     _instance?.dispose();
     _instance = value;
   }
 
+  /// Creates the default in-memory profiler if none exists yet.
   static void ensureInitialized() {
     _instance ??= AnalyticsProfilerMemoryImpl();
   }
 
+  /// Logs a named analytics event with optional [parameters].
   void logEvent(String name, {Map<String, Object?>? parameters});
 
+  /// Logs a screen view with optional [parameters].
   void logScreenView(String screenName, {Map<String, Object?>? parameters});
 
+  /// Sets the current user id.
   void setUserId(String? userId);
 
+  /// Sets a user property identified by [name] to [value].
   void setUserProperty(String name, Object? value);
 
+  /// Records global parameters (for example app state or environment).
   void setGlobalParameters(Map<String, Object?> parameters);
 
-  /// Returns a stream of recorded analytics profile entries (most recent list state).
+  /// Stream of the full entry list.
   Stream<List<AnalyticsProfileData>> getProfileDataStream();
 
+  /// Current snapshot of all recorded entries.
   List<AnalyticsProfileData>? getProfileData();
 
+  /// Removes all recorded entries.
   void clear();
 
+  /// Releases profiler resources.
   void dispose() {}
 }
 
-/// A memory implementation of [AnalyticsProfiler].
-/// Stores entries in a list and emits updates on a stream.
+/// Default [AnalyticsProfiler] that keeps entries in memory for [AnalyticsTool].
+///
+/// Created by [AnalyticsProfiler.ensureInitialized]. You rarely need to
+/// reference this type directly unless replacing [AnalyticsProfiler.instance].
 class AnalyticsProfilerMemoryImpl implements AnalyticsProfiler {
   final BehaviorSubject<List<AnalyticsProfileData>> _profileDataSubject =
       BehaviorSubject<List<AnalyticsProfileData>>.seeded([]);

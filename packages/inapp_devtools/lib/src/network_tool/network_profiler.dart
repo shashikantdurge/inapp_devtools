@@ -2,6 +2,15 @@ import 'package:rxdart/subjects.dart';
 
 import 'network_profile_data.dart';
 
+/// In-app dev tool for inspecting network calls from your app.
+///
+/// All the network calls are captured automatically and stored in memory. But they're not modified.
+///
+/// Currently supported clients: [HttpClient]
+///
+///See also:
+/// * [NetworkTool] — dev tool that displays recorded entries.
+/// * [HttpClient] — `dart:io` client used by application code.
 abstract class NetworkProfiler {
   static NetworkProfiler? _instance;
 
