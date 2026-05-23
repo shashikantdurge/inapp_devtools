@@ -626,8 +626,8 @@ class _TimelinePanel extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: data.statusCode! >= 200 && data.statusCode! < 300
-                          ? _postmanSuccess.withOpacity(0.2)
-                          : _postmanOrange.withOpacity(0.2),
+                          ? _postmanSuccess.withValues(alpha: 0.2)
+                          : _postmanOrange.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(

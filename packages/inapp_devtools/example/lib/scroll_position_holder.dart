@@ -46,13 +46,10 @@ class _ScrollPositionHolderExampleState
             child: NotificationListener<ScrollMetricsNotification>(
               onNotification: (notification) {
                 if (notification.metrics.extentAfter == 0) {
-                  print('Direction: isDown true');
                   isDown = true;
                 } else {
-                  print('Direction: isDown false');
                   isDown = false;
                 }
-                print('Scroll position: ${notification.metrics}');
                 return false;
               },
               child: ListView.builder(

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'dart:collection';
 import 'package:flutter/material.dart';
@@ -43,7 +42,8 @@ class NetworkTool extends StatefulWidget with InAppDevToolsItem {
   State<NetworkTool> createState() => _NetworkToolState();
 }
 
-class _NetworkToolState extends State<NetworkTool> {
+class _NetworkToolState extends State<NetworkTool>
+    with PlayPauseBuilderMixin<NetworkTool> {
   final HeroController _heroController = HeroController();
   late ToolStateNotifier _toolStateNotifier;
   NetworkProfileData? _selectedProfileData;
@@ -78,6 +78,7 @@ class _NetworkToolState extends State<NetworkTool> {
             },
             icon: Icon(Icons.delete_outline),
           ),
+          buildPlayPauseButton(),
         ],
       ),
       body: HeroControllerScope(
@@ -89,6 +90,8 @@ class _NetworkToolState extends State<NetworkTool> {
             MaterialPage(
               child: _NetworkRequestListView(
                 requestFilters: widget.networkRequestFilters,
+                isPaused: isPaused,
+                onHiddenItemsCountChanged: setHiddenItemsCount,
                 onItemTap: (data) {
                   setState(() {
                     _selectedProfileData = data;
@@ -131,9 +134,13 @@ class _NetworkRequestListView extends StatefulWidget {
   const _NetworkRequestListView({
     required this.onItemTap,
     required this.requestFilters,
+    required this.isPaused,
+    required this.onHiddenItemsCountChanged,
   });
   final void Function(NetworkProfileData) onItemTap;
   final List<NetworkProfileDataFilter> requestFilters;
+  final bool isPaused;
+  final ValueChanged<int> onHiddenItemsCountChanged;
   @override
   State<_NetworkRequestListView> createState() =>
       __NetworkRequestListViewState();
@@ -168,6 +175,8 @@ class __NetworkRequestListViewState extends State<_NetworkRequestListView> {
     return InAppDevToolsScrollView<NetworkProfileData>(
       key: ObjectKey(widget.requestFilters),
       getItems: _getItems,
+      pause: !widget.isPaused,
+      onHiddenItemsCountChanged: widget.onHiddenItemsCountChanged,
       itemsStream: _filteredStream,
       itemBuilder: (context, data) {
         return DecoratedBox(

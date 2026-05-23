@@ -17,6 +17,7 @@
       "name": "inapp_devtools",
       "version": "0.0.1",
       "dependencies": [
+        "collection",
         "flutter",
         "http",
         "intl",
@@ -87,6 +88,11 @@
         "test_api",
         "vector_math"
       ]
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
+      "dependencies": []
     },
     {
       "name": "logging",
@@ -257,11 +263,6 @@
     {
       "name": "conventional_commit",
       "version": "0.6.1+1",
-      "dependencies": []
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
       "dependencies": []
     },
     {

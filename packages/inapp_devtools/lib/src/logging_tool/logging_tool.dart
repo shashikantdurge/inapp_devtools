@@ -24,8 +24,8 @@ class LoggingTool extends StatefulWidget with InAppDevToolsItem {
   }
 }
 
-class _LoggingToolState extends State<LoggingTool> {
-  bool autoUpdateList = true;
+class _LoggingToolState extends State<LoggingTool>
+    with PlayPauseBuilderMixin<LoggingTool> {
   late final Stream<List<LogRecord>> _entriesStream;
 
   @override
@@ -43,25 +43,14 @@ class _LoggingToolState extends State<LoggingTool> {
             onPressed: LoggingProfiler.instance.clear,
             icon: const Icon(Icons.delete_outline),
           ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                autoUpdateList = !autoUpdateList;
-              });
-            },
-            icon: autoUpdateList
-                ? const Icon(Icons.pause)
-                : const Icon(Icons.play_arrow),
-            tooltip: autoUpdateList
-                ? 'Pause logging updates'
-                : 'Resume logging updates',
-          ),
+          buildPlayPauseButton(),
         ],
       ),
       body: InAppDevToolsScrollView<LogRecord>(
-        autoUpdate: autoUpdateList,
+        pause: !isPaused,
         getItems: () => LoggingProfiler.instance.getLoggingData() ?? [],
         itemsStream: _entriesStream,
+        onHiddenItemsCountChanged: setHiddenItemsCount,
         itemBuilder: (context, itemInfo) {
           return _LogTile(
             key: ValueKey(itemInfo.item.sequenceNumber),

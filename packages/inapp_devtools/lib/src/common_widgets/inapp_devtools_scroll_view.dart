@@ -81,8 +81,9 @@ class InAppDevToolsScrollView<E> extends StatefulWidget {
     required this.itemsStream,
     required this.itemBuilder,
     AnimatedItemBuilder? separatorBuilder,
-    this.autoUpdate = true,
+    this.pause = true,
     this.padding = EdgeInsets.zero,
+    this.onHiddenItemsCountChanged,
     super.key,
   }) : separatorBuilder =
            separatorBuilder ??
@@ -94,8 +95,9 @@ class InAppDevToolsScrollView<E> extends StatefulWidget {
   final Stream<List<E>> itemsStream;
   final Widget Function(BuildContext context, ItemInfo<E> itemInfo) itemBuilder;
   final AnimatedItemBuilder separatorBuilder;
-  final bool autoUpdate;
+  final bool pause;
   final EdgeInsetsGeometry padding;
+  final ValueChanged<int>? onHiddenItemsCountChanged;
 
   @override
   State<InAppDevToolsScrollView<E>> createState() =>
@@ -129,9 +131,9 @@ class _InAppDevToolsScrollViewState<E>
       _itemsSubscription?.cancel();
       _itemsSubscription = widget.itemsStream.listen(_onItemsChange);
     }
-    if (widget.autoUpdate && !oldWidget.autoUpdate) {
+    if (widget.pause && !oldWidget.pause) {
       _onItemsChange(widget.getItems(), animateType: _AnimateType.fade);
-      if (widget.autoUpdate) {
+      if (widget.pause) {
         _scrollController.animateTo(
           0,
           duration: Duration(milliseconds: 300),
@@ -152,9 +154,14 @@ class _InAppDevToolsScrollViewState<E>
     List<E> data, {
     _AnimateType animateType = _AnimateType.size,
   }) {
-    if (!widget.autoUpdate) {
+    if (!widget.pause) {
+      Future.microtask(
+        () =>
+            widget.onHiddenItemsCountChanged?.call(data.length - _list.length),
+      );
       return;
     }
+    Future.microtask(() => widget.onHiddenItemsCountChanged?.call(0));
     _animateType = animateType;
     if (data.length < _list.length) {
       _list.removeAll(removedItemBuilder: (context, animation) => SizedBox());

@@ -104,6 +104,7 @@ class _InAppDevToolsAppBarState extends State<InAppDevToolsAppBar> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: 8,
             children: [...?widget.customActions, ?expandButton],
           ),
         ),
