@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import 'http_test_framework.dart';
+import 'app_theme.dart';
 
-/// HTTP method sort order for filter chips (stable, predictable UI).
+part 'http_test_scenarios.dart';
+
 int _methodChipOrder(String method) {
   const order = <String>[
     'GET',
@@ -19,21 +21,21 @@ int _methodChipOrder(String method) {
   return i < 0 ? order.length : i;
 }
 
-/// Full-screen list of [HttpTestScenario.all] with method filter chips and SEND.
-class ApiPlaygroundScreen extends StatefulWidget {
-  const ApiPlaygroundScreen({super.key});
+/// Sends sample HTTP traffic; inspect captures in the in-app **Network** tool.
+class NetworkToolScreen extends StatefulWidget {
+  const NetworkToolScreen({super.key});
 
   @override
-  State<ApiPlaygroundScreen> createState() => _ApiPlaygroundScreenState();
+  State<NetworkToolScreen> createState() => _NetworkToolScreenState();
 }
 
-class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
-  late final List<HttpTestScenario> _resolved = HttpTestScenario.all
+class _NetworkToolScreenState extends State<NetworkToolScreen> {
+  late final List<HttpTestScenario> _scenarios = HttpTestScenario.all
       .map((s) => s.resolveBody())
       .toList(growable: false);
 
   late final List<String> _methods = () {
-    final set = _resolved.map((s) => s.method).toSet().toList();
+    final set = _scenarios.map((s) => s.method).toSet().toList();
     set.sort((a, b) {
       final cmp = _methodChipOrder(a).compareTo(_methodChipOrder(b));
       return cmp != 0 ? cmp : a.compareTo(b);
@@ -41,14 +43,12 @@ class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
     return set;
   }();
 
-  /// `null` means no filter (show all scenarios).
   String? _selectedMethod;
-
   bool _isSending = false;
 
   List<HttpTestScenario> get _visible {
-    if (_selectedMethod == null) return _resolved;
-    return _resolved.where((s) => s.method == _selectedMethod).toList();
+    if (_selectedMethod == null) return _scenarios;
+    return _scenarios.where((s) => s.method == _selectedMethod).toList();
   }
 
   Future<void> _send(HttpTestScenario scenario) async {
@@ -92,24 +92,34 @@ class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final muted = textTheme.bodySmall?.color;
 
     return Scaffold(
-      appBar: AppBar(title: TextField()),
+      appBar: AppBar(
+        title: const Row(
+          children: [
+            Icon(Icons.hub_outlined, color: ExampleTheme.primary),
+            SizedBox(width: 8),
+            Text('Network Tool'),
+          ],
+        ),
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const _DevtoolsHint(
+            icon: Icons.hub_outlined,
+            message:
+                'Open the in-app devtools panel and select **Network** to inspect requests.',
+          ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
                 FilterChip(
                   label: const Text('All'),
                   selected: _selectedMethod == null,
-                  onSelected: (_) {
-                    setState(() => _selectedMethod = null);
-                  },
+                  onSelected: (_) => setState(() => _selectedMethod = null),
                 ),
                 const SizedBox(width: 8),
                 for (final method in _methods) ...[
@@ -133,14 +143,15 @@ class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
                 ? Center(
                     child: Text(
                       'No scenarios for this filter.',
-                      style: textTheme.bodyMedium?.copyWith(color: muted),
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: ExampleTheme.muted,
+                      ),
                     ),
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: _visible.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final scenario = _visible[index];
                       return Card(
@@ -155,9 +166,7 @@ class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
                                   children: [
                                     Text(
                                       '${scenario.method} ${scenario.uri}',
-                                      style: textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      style: textTheme.titleSmall,
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
@@ -180,6 +189,38 @@ class _ApiPlaygroundScreenState extends State<ApiPlaygroundScreen> {
                       );
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DevtoolsHint extends StatelessWidget {
+  const _DevtoolsHint({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ExampleTheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: ExampleTheme.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: ExampleTheme.primary, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ),
         ],
       ),
