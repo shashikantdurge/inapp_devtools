@@ -38,7 +38,8 @@ class AnalyticsTool extends StatefulWidget with InAppDevToolsItem {
   State<AnalyticsTool> createState() => _AnalyticsToolState();
 }
 
-class _AnalyticsToolState extends State<AnalyticsTool> {
+class _AnalyticsToolState extends State<AnalyticsTool>
+    with PlayPauseBuilderMixin<AnalyticsTool> {
   late final Stream<List<AnalyticsProfileData>> _itemsStream;
 
   @override
@@ -61,12 +62,15 @@ class _AnalyticsToolState extends State<AnalyticsTool> {
             onPressed: AnalyticsProfiler.instance.clear,
             icon: const Icon(Icons.delete_outline),
           ),
+          buildPlayPauseButton(),
         ],
       ),
       body: InAppDevToolsScrollView<AnalyticsProfileData>(
         padding: EdgeInsets.only(bottom: 16),
         getItems: _getItems,
         itemsStream: _itemsStream,
+        pause: !isPaused,
+        onHiddenItemsCountChanged: setHiddenItemsCount,
         separatorBuilder: (context, index, animation) {
           return const SizedBox.shrink();
         },
