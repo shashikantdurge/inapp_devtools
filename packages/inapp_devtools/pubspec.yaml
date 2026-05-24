@@ -1,7 +1,7 @@
 name: inapp_devtools
-description: "A new Flutter package project."
-version: 0.0.1
-homepage:
+description: "Monitor all network requests, analytics events, and debugging logs in real-time, directly inside your app."
+version: 0.1.0
+homepage: https://github.com/shashikantdurge/inapp_devtools/tree/master/packages/inapp_devtools
 resolution: workspace
 
 environment:

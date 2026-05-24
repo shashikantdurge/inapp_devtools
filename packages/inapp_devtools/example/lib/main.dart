@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:iad_html_data_preview/iad_html_data_preview.dart';
-import 'package:iad_image_data_preview/iad_image_data_preview.dart';
-import 'package:iad_json_data_preview/iad_json_data_preview.dart';
 import 'package:inapp_devtools/inapp_devtools.dart';
 
 import 'analytics_tool_screen.dart';
@@ -19,14 +16,9 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InAppDevTools(
+      color: Colors.blue[200],
       tools: [
-        NetworkTool(
-          dataPreviewExtensions: [
-            IadJsonDataPreview(),
-            IadImageDataPreview(),
-            IadHtmlDataPreview(),
-          ],
-        ),
+        NetworkTool(),
         const LoggingTool(),
         const AnalyticsTool(key: ValueKey('analytics')),
       ],

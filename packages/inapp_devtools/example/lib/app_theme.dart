@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// Postman-inspired dark palette shared across the example app.
+/// Postman-inspired light palette shared across the example app.
 abstract final class ExampleTheme {
-  static const background = Color(0xFF1E1E1E);
-  static const surface = Color(0xFF2D2D2D);
+  static const background = Color(0xFFF5F5F5);
+  static const surface = Color(0xFFFFFFFF);
   static const primary = Color(0xFFFF6C37);
-  static const onSurface = Color(0xFFE0E0E0);
-  static const muted = Color(0xFF9E9E9E);
-  static const border = Color(0xFF404040);
-  static const success = Color(0xFF4CAF50);
+  static const onSurface = Color(0xFF212121);
+  static const muted = Color(0xFF757575);
+  static const border = Color(0xFFE0E0E0);
+  static const success = Color(0xFF2E7D32);
 
   static ThemeData build() {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       scaffoldBackgroundColor: background,
-      colorScheme: const ColorScheme.dark(
+      colorScheme: const ColorScheme.light(
         primary: primary,
         onPrimary: Colors.white,
         surface: surface,
@@ -26,6 +26,7 @@ abstract final class ExampleTheme {
         backgroundColor: surface,
         foregroundColor: onSurface,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
       ),
       cardTheme: CardThemeData(

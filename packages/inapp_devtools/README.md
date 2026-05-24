@@ -1,39 +1,67 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
-
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+Monitor all network requests, analytics events, and debugging logs in real-time, directly inside your app.
 
 ## Features
+### Analytics Tool
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/inapp_devtools/assets/analytics_tool_use.gif" alt="Analytics Tool" height="400" />
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+### Network Tool
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/inapp_devtools/assets/network_tool_use.gif" alt="Network Tool" height="400" />
+
+### Logging Tool
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/inapp_devtools/assets/logging_tool_use.gif" alt="Logging Tool" height="400" />
+
 
 ## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
 ```dart
-const like = 'sample';
+///In the main, wrap your app widget with InAppDevTools
+InAppDevTools(child: MyApp())
+
+///For recording Analytics
+AnalyticsProfiler.instance.logEvent(
+  'button_tap',
+  parameters: {'id': 'checkout'},
+);
+
+///For recording Logs
+Logger.root.info('User signed in');
+
+///HTTP Requests are automatically recorded while using the InAppDevtools widget
 ```
 
 ## Additional information
+### Custom Tool
+You can build your own custom tool and pass it to `InAppDevTools` widget.
+Use cases could be - switching between dev/prod environments, performing some action to reproduce some testing scenario etc.
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+### DataPreviewExtension (for NetworkTool)
+The default preview supports rendering plain text and image data. You can also customize how data is displayed in the NetworkTool detailed view.
+
+There are packages available for rendering specific data types:
+
+HTML — [iad_html_data_preview](https://pub.dev/packages/iad_html_data_preview)
+
+JSON — [iad_json_data_preview](https://pub.dev/packages/iad_json_data_preview)
+
+```dart
+InAppDevTools(
+  tools: [
+    NetworkTool(
+      dataPreviewExtensions: [
+        IadJsonDataPreview(),
+        IadHtmlDataPreview(),
+      ],
+    ),
+    const LoggingTool(),
+    const AnalyticsTool(),
+  ],
+  child: MyApp(),
+)
+```
+
+## Roadmap
+1. Copy feature improvements
+2. Filters improvement - Control what data to be seen in the list
+3. Stats - Data usage, Analytics count etc
+4. Support for CronetClient and CupertinoClient based on demand (NetworkTool)
+5. Want us to prioritize something that improves your or your team’s productivity? Raise a request on GitHub Issues — we’d be happy to solve it.
+
