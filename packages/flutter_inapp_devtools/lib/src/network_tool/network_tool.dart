@@ -4,11 +4,16 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:inapp_devtools/inapp_devtools.dart';
-import 'package:inapp_devtools/src/common_widgets/subordinate_scroll_controller.dart';
-import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
-import 'package:inapp_devtools/src/network_tool/network_profile_data.dart';
-import 'package:inapp_devtools/src/network_tool/iad_clients/iad_http_client.dart';
+import '../common_widgets/common_widgets.dart';
+import '../common_widgets/subordinate_scroll_controller.dart';
+import '../inapp_devtool/inapp_devtools.dart';
+import '../inapp_devtool/theme.dart';
+import '../inapp_devtool/utils.dart';
+import 'data_preview.dart';
+import 'iad_clients/iad_http_client.dart';
+import 'network_profile_data.dart';
+import 'network_profiler.dart';
+import 'network_request_filter.dart';
 
 const _kRequestRowHeight = 36.0;
 

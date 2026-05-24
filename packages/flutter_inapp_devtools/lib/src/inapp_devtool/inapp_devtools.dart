@@ -6,7 +6,10 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:inapp_devtools/inapp_devtools.dart';
+import '../analytics_tool/analytics_tool.dart';
+import '../logging_tool/logging_tool.dart';
+import '../network_tool/network_tool.dart';
+import 'theme.dart';
 
 /// A mixin for widgets which can be used as a tool in the in-app devtools [InAppDevTools.tools].
 ///

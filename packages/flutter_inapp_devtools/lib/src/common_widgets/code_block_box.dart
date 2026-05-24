@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inapp_devtools/src/common_widgets/single_child_pan_viewport.dart';
+import 'single_child_pan_viewport.dart';
 
 /// Monospace code block with horizontal and vertical panning.
 class CodeBlockBox extends StatelessWidget {

@@ -11,8 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  inapp_devtools:
-    path: ../inapp_devtools
+  flutter_inapp_devtools:
+    path: ../flutter_inapp_devtools
   flutter_pretty_json:
     path: ../flutter_pretty_json
 

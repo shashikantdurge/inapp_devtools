@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:inapp_devtools/inapp_devtools.dart';
-import 'package:inapp_devtools/src/inapp_devtool/utils.dart';
+import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
+import '../inapp_devtool/utils.dart';
 
 /// In-app dev tool for inspecting logs from the `package:logging` API.
 ///

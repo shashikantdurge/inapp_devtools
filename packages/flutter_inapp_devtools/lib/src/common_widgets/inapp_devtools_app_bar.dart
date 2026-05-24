@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:inapp_devtools/src/inapp_devtool/inapp_devtools.dart';
-import 'package:inapp_devtools/src/inapp_devtool/theme.dart';
+
+import '../inapp_devtool/inapp_devtools.dart';
+import '../inapp_devtool/theme.dart';
 
 /// App bar for a devtools tool: title opens [InAppDevToolsPickerOverlay],
 /// trailing actions scroll horizontally, close collapses the panel.

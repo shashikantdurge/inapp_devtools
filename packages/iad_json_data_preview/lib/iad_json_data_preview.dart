@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:inapp_devtools/inapp_devtools.dart';
+import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 import 'package:flutter_pretty_json/flutter_pretty_json.dart';
 
 class IadJsonDataPreview extends DataPreviewExtension<String> {

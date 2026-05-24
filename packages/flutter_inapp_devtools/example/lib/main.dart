@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inapp_devtools/inapp_devtools.dart';
+import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 
 import 'analytics_tool_screen.dart';
 import 'app_theme.dart';

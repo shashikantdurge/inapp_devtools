@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:inapp_devtools/src/common_widgets/inapp_devtools_app_bar.dart';
-import 'package:inapp_devtools/src/inapp_devtool/theme.dart';
+
+import '../inapp_devtool/theme.dart';
+import 'inapp_devtools_app_bar.dart';
 
 /// Column with a preferred-size [appBar] and an [Expanded] [body] — typical
 /// layout for one devtools tool.

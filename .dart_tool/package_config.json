@@ -356,8 +356,8 @@
       "languageVersion": "3.10"
     },
     {
-      "name": "inapp_devtools",
-      "rootUri": "../packages/inapp_devtools",
+      "name": "flutter_inapp_devtools",
+      "rootUri": "../packages/flutter_inapp_devtools",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     }

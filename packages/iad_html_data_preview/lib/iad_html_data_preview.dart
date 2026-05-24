@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:inapp_devtools/inapp_devtools.dart';
+import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class IadHtmlDataPreview extends DataPreviewExtension<String> {

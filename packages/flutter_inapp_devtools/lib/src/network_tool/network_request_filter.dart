@@ -1,4 +1,4 @@
-import 'package:inapp_devtools/src/network_tool/network_profile_data.dart';
+import 'network_profile_data.dart';
 
 typedef NetworkProfileDataFilterPredicate =
     bool Function(NetworkProfileData profileData);

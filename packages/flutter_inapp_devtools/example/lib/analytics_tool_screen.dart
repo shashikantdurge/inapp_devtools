@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:inapp_devtools/inapp_devtools.dart';
+import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 
 import 'app_theme.dart';
 
@@ -158,10 +158,7 @@ class _DevtoolsHint extends StatelessWidget {
           Icon(icon, color: ExampleTheme.primary, size: 20),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              message,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(message, style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
       ),

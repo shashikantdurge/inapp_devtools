@@ -1,6 +1,6 @@
 {
   "roots": [
-    "inapp_devtools",
+    "flutter_inapp_devtools",
     "inapp_devtools_workspace"
   ],
   "packages": [
@@ -14,8 +14,8 @@
       ]
     },
     {
-      "name": "inapp_devtools",
-      "version": "0.0.1",
+      "name": "flutter_inapp_devtools",
+      "version": "0.1.0",
       "dependencies": [
         "collection",
         "flutter",
