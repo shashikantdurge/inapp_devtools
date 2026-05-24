@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 
 import 'analytics_tool_screen.dart';

@@ -1,8 +1,7 @@
 name: iad_html_data_preview
-description: "A new Flutter package project."
-version: 0.0.1
-homepage:
-publish_to: none
+description: "A Flutter package for previewing HTML data."
+version: 0.1.0
+homepage: https://github.com/shashikantdurge/inapp_devtools/tree/master/packages/iad_html_data_preview
 
 environment:
   sdk: ^3.10.3
@@ -11,10 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_inapp_devtools:
-    path: ../flutter_inapp_devtools
+  flutter_inapp_devtools: ^0.1.1
   webview_flutter: ^4.13.1
-  flutter_widget_from_html_core: ^0.17.2
 
 dev_dependencies:
   flutter_test:
