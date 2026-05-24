@@ -32,20 +32,20 @@
         },
         {
             "name": "example",
-            "cwd": "packages/inapp_devtools/example",
+            "cwd": "packages/flutter_inapp_devtools/example",
             "request": "launch",
             "type": "dart"
         },
         {
             "name": "example (profile mode)",
-            "cwd": "packages/inapp_devtools/example",
+            "cwd": "packages/flutter_inapp_devtools/example",
             "request": "launch",
             "type": "dart",
             "flutterMode": "profile"
         },
         {
             "name": "example (release mode)",
-            "cwd": "packages/inapp_devtools/example",
+            "cwd": "packages/flutter_inapp_devtools/example",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"

@@ -2,13 +2,13 @@ Monitor all network requests, analytics events, and debugging logs in real-time,
 
 ## Features
 ### Analytics Tool
-<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/inapp_devtools/assets/analytics_tool_use.gif" alt="Analytics Tool" height="400" />
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/analytics_tool_use.gif" alt="Analytics Tool" height="400" />
 
 ### Network Tool
-<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/inapp_devtools/assets/network_tool_use.gif" alt="Network Tool" height="400" />
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/network_tool_use.gif" alt="Network Tool" height="400" />
 
 ### Logging Tool
-<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/inapp_devtools/assets/logging_tool_use.gif" alt="Logging Tool" height="400" />
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/logging_tool_use.gif" alt="Logging Tool" height="400" />
 
 
 ## Getting started

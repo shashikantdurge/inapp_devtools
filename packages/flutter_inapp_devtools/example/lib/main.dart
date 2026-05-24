@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 
 import 'analytics_tool_screen.dart';
@@ -25,6 +26,9 @@ class ExampleApp extends StatelessWidget {
       child: MaterialApp(
         title: 'InApp DevTools',
         debugShowCheckedModeBanner: false,
+        // locale: const Locale('en', 'US'),
+        // supportedLocales: const [Locale('en', 'US')],
+        // localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: ExampleTheme.build(),
         home: const HomeScreen(),
       ),

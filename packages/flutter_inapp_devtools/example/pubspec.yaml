@@ -1,8 +1,8 @@
-name: flutter_inapp_devtools
+name: flutter_inapp_devtools_example
 description: "Monitor all network requests, analytics events, and debugging logs in real-time, directly inside your app."
 version: 0.1.0
-homepage: https://github.com/shashikantdurge/inapp_devtools/tree/master/packages/flutter_inapp_devtools
-resolution: workspace
+publish_to: none
+
 
 environment:
   sdk: '>=3.10.3 <4.0.0'
@@ -11,11 +11,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.6.0
-  rxdart: ^0.28.0
-  intl: ^0.20.2
-  logging: ^1.3.0
-  collection: ^1.19.1
+  flutter_localizations:
+    sdk: flutter
+  flutter_inapp_devtools:
+    path: ../
 
 
 dev_dependencies:
@@ -28,6 +27,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  uses-material-design: true
 
   # To add assets to your package, add an assets section, like this:
   # assets:
