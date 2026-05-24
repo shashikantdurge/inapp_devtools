@@ -1,3 +1,3 @@
-## 0.0.1
+## 0.1.0
 
-* TODO: Describe initial release.
+* Implemets JSON data preview for InAppDevTools using flutter_pretty_json.
