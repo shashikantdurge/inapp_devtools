@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
+import 'package:iad_html_data_preview/iad_html_data_preview.dart';
+import 'package:iad_image_data_preview/iad_image_data_preview.dart';
+import 'package:iad_json_data_preview/iad_json_data_preview.dart';
 
 import 'analytics_tool_screen.dart';
 import 'app_theme.dart';
@@ -18,7 +21,13 @@ class ExampleApp extends StatelessWidget {
     return InAppDevTools(
       color: Colors.blue[200],
       tools: [
-        NetworkTool(),
+        NetworkTool(
+          dataPreviewExtensions: [
+            IadJsonDataPreview(),
+            IadImageDataPreview(),
+            IadHtmlDataPreview(),
+          ],
+        ),
         const LoggingTool(),
         const AnalyticsTool(key: ValueKey('analytics')),
       ],

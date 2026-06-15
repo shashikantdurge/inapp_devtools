@@ -13,6 +13,16 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+
+  iad_json_data_preview:
+    path: ../../iad_json_data_preview
+  iad_image_data_preview:
+    path: ../../iad_image_data_preview
+  iad_html_data_preview:
+    path: ../../iad_html_data_preview
+  flutter_inapp_devtools: ^0.1.1
+
+dependency_overrides:
   flutter_inapp_devtools:
     path: ../
 

@@ -1,32 +1,26 @@
 Monitor all network requests, analytics events, and debugging logs in real-time, directly inside your app.
 
-## Features
-### Analytics Tool
-<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/analytics_tool_use.gif" alt="Analytics Tool" height="400" />
-
-### Network Tool
-<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/network_tool_use.gif" alt="Network Tool" height="400" />
-
-### Logging Tool
-<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/logging_tool_use.gif" alt="Logging Tool" height="400" />
-
-
-## Getting started
+## 🚀 Quickstart
 ```dart
-///In the main, wrap your app widget with InAppDevTools
-InAppDevTools(child: MyApp())
-
-///For recording Analytics
-AnalyticsProfiler.instance.logEvent(
-  'button_tap',
-  parameters: {'id': 'checkout'},
-);
-
-///For recording Logs
-Logger.root.info('User signed in');
-
-///HTTP Requests are automatically recorded while using the InAppDevtools widget
+void main() {
+  NetworkTool.ensureInitialized();
+  //...your code here
+  runApp(InAppDevTools(child: MyApp()));
+}
 ```
+
+## 🔥 Features
+### 🌐 Network Tool
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/network_tool_use.gif" alt="Network Tool" width="360" />
+
+### 📊 Analytics Tool
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/analytics_tool_use.gif" alt="Analytics Tool" height="360" />
+
+###  Logging Tool
+<img src="https://raw.githubusercontent.com/shashikantdurge/inapp_devtools/refs/heads/master/packages/flutter_inapp_devtools/assets/logging_tool_use.gif" alt="Logging Tool" height="360" />
+
+
+
 
 ## Additional information
 ### Custom Tool

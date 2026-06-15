@@ -77,10 +77,14 @@ class NetworkTool extends StatefulWidget with InAppDevToolsItem {
   @override
   String get label => 'Network';
 
-  @override
-  void initTool() {
+  static void ensureInitialized() {
     NetworkProfiler.ensureInitialized();
     HttpOverrides.global = IADNetworkHttpOverrides();
+  }
+
+  @override
+  void initTool() {
+    ensureInitialized();
   }
 
   @override

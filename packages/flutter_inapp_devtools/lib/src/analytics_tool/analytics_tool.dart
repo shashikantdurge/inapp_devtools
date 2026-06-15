@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 import 'package:intl/intl.dart';
 
+import 'analytics_profiler.dart';
 import 'analytics_profile_data.dart';
 
 const _kAnalyticsItemHeight = 36.0;
@@ -66,9 +67,13 @@ class AnalyticsTool extends StatefulWidget with InAppDevToolsItem {
   @override
   String get label => 'Analytics';
 
+  static void ensureInitialized() {
+    AnalyticsProfiler.ensureInitialized();
+  }
+
   @override
   void initTool() {
-    AnalyticsProfiler.ensureInitialized();
+    ensureInitialized();
   }
 
   @override

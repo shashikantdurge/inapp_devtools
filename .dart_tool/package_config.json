@@ -15,7 +15,7 @@
     },
     {
       "name": "async",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/async-2.13.0",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/async-2.13.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -33,15 +33,15 @@
     },
     {
       "name": "cli_launcher",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/cli_launcher-0.3.2+1",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/cli_launcher-0.3.3+1",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "cli_util",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/cli_util-0.4.2",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/cli_util-0.5.1",
       "packageUri": "lib/",
-      "languageVersion": "3.4"
+      "languageVersion": "3.7"
     },
     {
       "name": "collection",
@@ -54,6 +54,12 @@
       "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/conventional_commit-0.6.1+1",
       "packageUri": "lib/",
       "languageVersion": "3.8"
+    },
+    {
+      "name": "ffi",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/ffi-2.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
     },
     {
       "name": "file",
@@ -93,7 +99,7 @@
     },
     {
       "name": "json_annotation",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/json_annotation-4.11.0",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/json_annotation-4.12.0",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -105,21 +111,21 @@
     },
     {
       "name": "melos",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/melos-7.4.0",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/melos-7.8.2",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
     {
       "name": "meta",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/meta-1.17.0",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/meta-1.18.3",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
     {
       "name": "mustache_template",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/mustache_template-2.0.3",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/mustache_template-2.0.5",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.10"
     },
     {
       "name": "path",
@@ -213,9 +219,9 @@
     },
     {
       "name": "xml",
-      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/xml-6.6.1",
+      "rootUri": "file:///Users/shashikantdurge/.pub-cache/hosted/pub.dev/xml-7.0.1",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.11"
     },
     {
       "name": "yaml",
@@ -237,8 +243,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.10.3",
-  "flutterRoot": "file:///Users/shashikantdurge/development/flutter",
-  "flutterVersion": "3.38.4",
+  "generatorVersion": "3.12.0",
+  "flutterRoot": "file:///opt/homebrew/Caskroom/flutter/3.32.4/flutter",
+  "flutterVersion": "3.44.0",
   "pubCache": "file:///Users/shashikantdurge/.pub-cache"
 }

@@ -1,3 +1,6 @@
+## 0.1.2
+* Added ensureInitialized method to Built in Tools
+
 ## 0.1.1
 * Updated readme.md
 
