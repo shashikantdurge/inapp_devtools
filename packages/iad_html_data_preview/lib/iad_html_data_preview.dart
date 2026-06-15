@@ -54,10 +54,14 @@ class __HtmlPreviewWidgetState extends State<_HtmlPreviewWidget> {
   void initState() {
     super.initState();
     _htmlWithImageFallback = _injectImageErrorFallback(widget.data);
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..enableZoom(true)
-      ..loadHtmlString(_htmlWithImageFallback);
+    // #enddocregion platform_features
+    controller =
+        WebViewController.fromPlatformCreationParams(
+            PlatformWebViewControllerCreationParams(),
+          )
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..enableZoom(true)
+          ..loadHtmlString(_htmlWithImageFallback);
   }
 
   String _injectImageErrorFallback(String html) {
