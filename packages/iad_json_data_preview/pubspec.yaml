@@ -1,6 +1,6 @@
 name: iad_json_data_preview
 description: "A Flutter package for previewing JSON data."
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/shashikantdurge/inapp_devtools/tree/master/packages/iad_json_data_preview
 
 environment:
@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_inapp_devtools: ^0.1.1
+  flutter_inapp_devtools: ^0.1.2
   flutter_pretty_json: ^0.1.2
 
 dev_dependencies:
