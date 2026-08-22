@@ -5,7 +5,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 import 'package:intl/intl.dart';
 
-import 'analytics_profiler.dart';
 import 'analytics_profile_data.dart';
 
 const _kAnalyticsItemHeight = 36.0;

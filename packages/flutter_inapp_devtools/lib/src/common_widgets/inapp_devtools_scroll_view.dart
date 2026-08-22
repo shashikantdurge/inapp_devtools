@@ -203,7 +203,7 @@ class _InAppDevToolsScrollViewState<E>
               if (_animateType == _AnimateType.size) {
                 child = SizeTransition(
                   sizeFactor: animation,
-                  axisAlignment: 1,
+                  alignment: .bottomCenter,
                   child: child,
                 );
               } else {
