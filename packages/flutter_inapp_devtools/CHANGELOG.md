@@ -1,3 +1,7 @@
+## 0.1.3
+* Fixed analysis warnings
+* Updated README.md
+
 ## 0.1.2
 * Added ensureInitialized method to Built in Tools
 
