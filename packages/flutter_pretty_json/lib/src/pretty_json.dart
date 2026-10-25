@@ -5,6 +5,12 @@ import 'package:two_dimensional_scrollables/two_dimensional_scrollables.dart';
 import 'json_tree_data.dart';
 import 'theme_extension.dart';
 
+typedef CopyContentCallback = void Function(String data);
+
+void _defaultCopyContentCallback(String data) {
+  Clipboard.setData(ClipboardData(text: data));
+}
+
 /// Displays JSON data as an expandable tree with syntax highlighting.
 ///
 /// Use [PrettyJsonTheme] to customize colors
@@ -19,6 +25,7 @@ class PrettyJson extends StatefulWidget {
     this.expandDepth,
     this.verticalDetails = const ScrollableDetails.vertical(),
     this.horizontalDetails = const ScrollableDetails.horizontal(),
+    this.copyContentCallback = _defaultCopyContentCallback,
     super.key,
   });
 
@@ -37,6 +44,9 @@ class PrettyJson extends StatefulWidget {
   /// The depth to expand the tree. Defaults to null.
   /// If the [expanded] is set to false, this will be ignored.
   final int? expandDepth;
+
+  /// A callback to copy the content
+  final CopyContentCallback copyContentCallback;
 
   @override
   State<PrettyJson> createState() => _PrettyJsonState();
@@ -308,7 +318,7 @@ class _PrettyJsonState extends State<PrettyJson> {
           node.content.key != null,
           'Key should not be null, if you see this, please report an issue to the developer',
         );
-        Clipboard.setData(ClipboardData(text: node.content.key!));
+        widget.copyContentCallback(node.content.key!);
         break;
       case 'copy_value':
       case 'copy_string_contents':
@@ -316,9 +326,7 @@ class _PrettyJsonState extends State<PrettyJson> {
           node.content.getCopyableValue != null,
           'Copyable value should not be null, if you see this, please report an issue to the developer',
         );
-        Clipboard.setData(
-          ClipboardData(text: node.content.getCopyableValue!.call()!),
-        );
+        widget.copyContentCallback(node.content.getCopyableValue!.call()!);
         break;
       case 'copy_property_path':
         final path = _getPropertyPath(node);
@@ -326,7 +334,7 @@ class _PrettyJsonState extends State<PrettyJson> {
           path != null,
           'Property path should not be null, if you see this, please report an issue to the developer',
         );
-        Clipboard.setData(ClipboardData(text: path!));
+        widget.copyContentCallback(path!);
         break;
       case 'copy_string_as_json_literal':
         assert(
@@ -334,7 +342,7 @@ class _PrettyJsonState extends State<PrettyJson> {
           'Node content should be a StringPrimitiveTreeData, if you see this, please report an issue to the developer',
         );
         final stringNode = node.content as StringPrimitiveTreeData;
-        Clipboard.setData(ClipboardData(text: stringNode.value));
+        widget.copyContentCallback(stringNode.value);
         break;
       case 'expand_all':
         void expandNode(TreeViewNode<JsonTreeData> node) {

@@ -1,3 +1,6 @@
+## 0.2.0
+* Added copyContentCallback parameter to PrettyJson widget to allow customizing the copy content behavior
+
 ## 0.1.2
 * PrettyJson widget accepts optional params verticalDetails and horizontalDetails which includes ScrollController as well
 
