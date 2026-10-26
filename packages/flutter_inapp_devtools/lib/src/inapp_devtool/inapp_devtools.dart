@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import '../analytics_tool/analytics_tool.dart';
 import '../logging_tool/logging_tool.dart';
 import '../network_tool/network_tool.dart';
@@ -29,6 +30,13 @@ mixin InAppDevToolsItem on Widget {
   String get label;
   void initTool() {}
   void disposeTool() {}
+}
+
+typedef CopyDataCallback = void Function(Object data);
+
+void _defaultCopyDataCallback(Object data) {
+  debugPrint('$data');
+  Clipboard.setData(ClipboardData(text: data.toString()));
 }
 
 /// How much of the screen the devtools overlay occupies.
@@ -82,6 +90,7 @@ class InAppDevTools extends StatefulWidget {
     this.theme,
     this.color,
     this.child,
+    this.copyDataCallback,
   }) : assert(tools.isNotEmpty, 'tools must not be empty'),
        assert(
          initialSelectedToolIndex >= 0 &&
@@ -104,6 +113,9 @@ class InAppDevTools extends StatefulWidget {
 
   /// The application rendered underneath the devtools overlay.
   final Widget? child;
+
+  /// Customise the copy data behaviour.
+  final CopyDataCallback? copyDataCallback;
 
   /// The [InAppDevToolsController] for the nearest [InAppDevTools] ancestor.
   ///
@@ -146,7 +158,10 @@ class _InAppDevToolsState extends State<InAppDevTools> {
     super.initState();
     _controller
       ..setTools(widget.tools)
-      ..setSelectedToolIndex(widget.initialSelectedToolIndex);
+      ..setSelectedToolIndex(widget.initialSelectedToolIndex)
+      ..setCopyDataCallback(
+        widget.copyDataCallback ?? _defaultCopyDataCallback,
+      );
     _initTools();
   }
 
@@ -205,6 +220,11 @@ class _InAppDevToolsState extends State<InAppDevTools> {
       _controller.setTools(widget.tools);
     }
     _updateTools(oldTools: oldWidget.tools, newTools: widget.tools);
+    if (widget.copyDataCallback != oldWidget.copyDataCallback) {
+      _controller.setCopyDataCallback(
+        widget.copyDataCallback ?? _defaultCopyDataCallback,
+      );
+    }
   }
 
   Widget _buildPanelContent(BuildContext context) {
@@ -514,6 +534,9 @@ class InAppDevToolsController extends ChangeNotifier {
   InAppDevToolsPanelWindowMode _panelMode = .minimized;
   int _selectedToolIndex = 0;
   List<InAppDevToolsItem> _tools = [];
+  CopyDataCallback _copyDataCallback = _defaultCopyDataCallback;
+
+  CopyDataCallback get copyDataCallback => _copyDataCallback;
 
   InAppDevToolsPanelWindowMode get panelMode => _panelMode;
 
@@ -540,6 +563,10 @@ class InAppDevToolsController extends ChangeNotifier {
   void setSelectedToolIndex(int index) {
     _selectedToolIndex = index;
     notifyListeners();
+  }
+
+  void setCopyDataCallback(CopyDataCallback copyData) {
+    _copyDataCallback = copyData;
   }
 
   void toggleWindowState() {

@@ -1,3 +1,7 @@
+## 0.2.0
+* Long press on analytics events or logs or network headers to copy the data.
+* Added a param - copyDataCallback. Customise the copy data functionality.
+
 ## 0.1.3
 * Fixed analysis warnings
 * Updated README.md

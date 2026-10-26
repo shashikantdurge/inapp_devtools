@@ -255,6 +255,24 @@ ThemeData getDakTheme() {
     ),
     dividerTheme: const DividerThemeData(color: outline, thickness: 1),
     dividerColor: outline,
+    shadowColor: const Color(0xFF000000),
+    popupMenuTheme: PopupMenuThemeData(
+      color: surface,
+      elevation: 12,
+      shadowColor: const Color(0xFF000000),
+      surfaceTintColor: Colors.transparent,
+      menuPadding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(6),
+        side: const BorderSide(color: outline),
+      ),
+      textStyle: const TextStyle(
+        color: onSurface,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.1,
+      ),
+    ),
     dialogTheme: DialogThemeData(
       backgroundColor: surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

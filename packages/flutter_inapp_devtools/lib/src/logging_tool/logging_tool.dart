@@ -109,12 +109,14 @@ class _LogTileState extends State<_LogTile> {
   void _toggleExpanded() => setState(() => _expanded = !_expanded);
 
   String _formatLogObject(Object object) {
-    if (object is Map || object is Iterable) {
-      try {
+    try {
+      if (object is Map || object is Iterable) {
         return const JsonEncoder.withIndent('  ').convert(object);
-      } catch (_) {
-        // Fall through to toString.
+      } else if ((object as dynamic).toJson() case Object? json) {
+        return const JsonEncoder.withIndent('  ').convert(json);
       }
+    } catch (_) {
+      // Fall through to toString.
     }
     return object.toString();
   }
@@ -136,6 +138,91 @@ class _LogTileState extends State<_LogTile> {
       Level.SHOUT => const Color(0xFFD7263D),
       _ => const Color(0xFF42A5F5),
     };
+  }
+
+  Future<void> _showCopyMenu(BuildContext context) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final RelativeRect position;
+    final box = context.findRenderObject()! as RenderBox;
+    position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        box.localToGlobal(Offset(box.size.width, 0), ancestor: overlay),
+        box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    final items = <PopupMenuEntry<String>>[
+      const PopupMenuItem(value: 'all', child: Text('Copy all')),
+      const PopupMenuItem(value: 'message', child: Text('Copy message')),
+      if (record.object != null)
+        const PopupMenuItem(value: 'object', child: Text('Copy object')),
+      if (record.error != null)
+        const PopupMenuItem(value: 'error', child: Text('Copy error')),
+      if (record.stackTrace != null)
+        const PopupMenuItem(
+          value: 'stackTrace',
+          child: Text('Copy stack trace'),
+        ),
+    ];
+
+    final selected = await showMenu<String>(
+      context: context,
+      position: position,
+      items: items,
+    );
+    if (selected == null || !context.mounted) return;
+
+    final text = switch (selected) {
+      'message' => record.message,
+      'object' => _formatLogObject4Copy(record.object),
+      'error' => _formatLogError4Copy(record.error),
+      'stackTrace' => record.stackTrace.toString().trim(),
+      'all' => _formatFullRecord(),
+      _ => null,
+    };
+    if (text != null) {
+      InAppDevTools.of(context).copyDataCallback(text);
+    }
+  }
+
+  String _formatLogObject4Copy(Object? object) {
+    try {
+      final json = JsonEncoder.withIndent('\t').convert(object);
+      return 'Object ${object.runtimeType.toString()}:\n$json';
+    } catch (_) {
+      return 'Object ${object.runtimeType.toString()}: $object';
+    }
+  }
+
+  String _formatLogError4Copy(Object? error) {
+    try {
+      final json = JsonEncoder.withIndent('\t').convert(error);
+      return 'Error ${error.runtimeType.toString()}:\n$json';
+    } catch (_) {
+      return 'Error ${error.runtimeType.toString()}: $error';
+    }
+  }
+
+  String _formatFullRecord() {
+    final buffer = StringBuffer()
+      ..writeln(
+        '[${record.level.name}] ${formatLocalTime(record.time)} ${record.loggerName}',
+      );
+    if (record.message != record.object.toString()) {
+      buffer.writeln(record.message);
+    }
+    if (record.error != null) {
+      buffer.writeln(_formatLogError4Copy(record.error));
+    }
+    if (record.object != null) {
+      buffer.writeln(_formatLogObject4Copy(record.object));
+    }
+    if (record.stackTrace != null) {
+      buffer.writeln(record.stackTrace.toString().trim());
+    }
+    return buffer.toString().trimRight();
   }
 
   @override
@@ -184,39 +271,46 @@ class _LogTileState extends State<_LogTile> {
       }
     }
 
-    final tile = Container(
-      decoration: BoxDecoration(
-        color: _expanded ? Colors.black : Colors.transparent,
-      ),
-      foregroundDecoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: levelColor,
-            width: _expanded ? 3 : 1,
-            strokeAlign: BorderSide.strokeAlignInside,
-          ),
-          bottom: BorderSide(color: Color.fromARGB(255, 37, 37, 37), width: 1),
+    final tile = GestureDetector(
+      onLongPress: () => _showCopyMenu(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _expanded ? Colors.black : Colors.transparent,
         ),
-      ),
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 200),
-        alignment: Alignment.topLeft,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            header,
-            if (expandedChildren != null && expandedChildren.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [SizedBox(height: 4), ...expandedChildren],
+        foregroundDecoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(
+              color: levelColor,
+              width: _expanded ? 3 : 1,
+              strokeAlign: BorderSide.strokeAlignInside,
+            ),
+            bottom: BorderSide(
+              color: Color.fromARGB(255, 37, 37, 37),
+              width: 1,
+            ),
+          ),
+        ),
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.topLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              header,
+              if (expandedChildren != null && expandedChildren.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [SizedBox(height: 4), ...expandedChildren],
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+
     return tile;
   }
 }

@@ -190,6 +190,42 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
     };
   }
 
+  Future<void> _showCopyMenu(String? title) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final RelativeRect position;
+    final box = context.findRenderObject()! as RenderBox;
+    final copyDataFunction = InAppDevTools.of(context).copyDataCallback;
+    position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        box.localToGlobal(Offset(box.size.width, 0), ancestor: overlay),
+        box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    final items = <PopupMenuEntry<String>>[
+      const PopupMenuItem(value: 'all', child: Text('Copy all')),
+      if (title != null) PopupMenuItem(value: 'title', child: Text(title)),
+    ];
+
+    final selected = await showMenu<String>(
+      context: context,
+      position: position,
+      items: items,
+    );
+    if (selected == null || !context.mounted) return;
+
+    final text = switch (selected) {
+      'all' => widget.profileData.beautifyContentForCopy(),
+      'title' => title,
+      _ => null,
+    };
+    if (text != null) {
+      copyDataFunction(text);
+    }
+  }
+
   void showData() {
     _expanded = true;
     _stringContent = getContentData();
@@ -218,6 +254,7 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
     Widget contentChild;
     Color color;
     String title;
+    String? titleForCopy;
 
     // Accents: slightly higher chroma than before for clearer contrast on dark UIs.
     const accentEvent = Color(0xFFC49A6A); // warm amber
@@ -232,11 +269,13 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
     switch (data) {
       case Event():
         title = data.name;
+        titleForCopy = data.name;
         color = accentEvent;
         iconData = Icons.touch_app;
         break;
       case ScreenView():
         title = data.screenName;
+        titleForCopy = data.screenName;
         color = accentScreen;
         iconData = Icons.smartphone;
         break;
@@ -277,62 +316,11 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
       contentChild = const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Align(
-          alignment: contentAlignment,
-          child: SizedBox(
-            width: _kAnalyticsItemHeight,
-            height: _kDividerHeight,
-            child: VerticalDivider(thickness: 2),
-          ),
-        ),
-        Stack(
-          alignment: contentAlignment,
-          children: [
-            AnimatedContainer(
-              onEnd: _resetDataState,
-              curve: Curves.easeInOut,
-              duration: Duration(milliseconds: 200),
-              constraints: expanded
-                  ? BoxConstraints(
-                      minWidth: _kAnalyticsItemHeight,
-                      minHeight: _kAnalyticsItemHeight,
-                      maxWidth: width,
-                      maxHeight: 240,
-                    )
-                  : BoxConstraints.tightFor(
-                      width: _kAnalyticsItemHeight,
-                      height: _kAnalyticsItemHeight,
-                    ),
-              clipBehavior: Clip.hardEdge,
-              foregroundDecoration: BoxDecoration(
-                border: Border.all(color: color, width: 1.25),
-                borderRadius: BorderRadius.circular(expanded ? 10 : 100),
-              ),
-              decoration: BoxDecoration(
-                color: expanded
-                    ? Colors.black
-                    : Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(expanded ? 10 : 100),
-              ),
-              child: contentChild,
-            ),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: expanded ? hideData : showData,
-              child: _TileHeader(
-                dateTime: widget.profileData.loggedAt,
-                title: title,
-                showDateTime: widget.profileData.canShowDateTime || expanded,
-                color: expanded ? Colors.transparent : color,
-                icon: Icon(iconData, color: expanded ? color : bgColor),
-              ),
-            ),
-          ],
-        ),
-        if (!widget.hideBottomDivider)
+    return GestureDetector(
+      onLongPress: () => _showCopyMenu(titleForCopy),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           Align(
             alignment: contentAlignment,
             child: SizedBox(
@@ -341,7 +329,61 @@ class _AnalyticsProfileWidgetState extends State<_AnalyticsProfileWidget> {
               child: VerticalDivider(thickness: 2),
             ),
           ),
-      ],
+          Stack(
+            alignment: contentAlignment,
+            children: [
+              AnimatedContainer(
+                onEnd: _resetDataState,
+                curve: Curves.easeInOut,
+                duration: Duration(milliseconds: 200),
+                constraints: expanded
+                    ? BoxConstraints(
+                        minWidth: _kAnalyticsItemHeight,
+                        minHeight: _kAnalyticsItemHeight,
+                        maxWidth: width,
+                        maxHeight: 240,
+                      )
+                    : BoxConstraints.tightFor(
+                        width: _kAnalyticsItemHeight,
+                        height: _kAnalyticsItemHeight,
+                      ),
+                clipBehavior: Clip.hardEdge,
+                foregroundDecoration: BoxDecoration(
+                  border: Border.all(color: color, width: 1.25),
+                  borderRadius: BorderRadius.circular(expanded ? 10 : 100),
+                ),
+                decoration: BoxDecoration(
+                  color: expanded
+                      ? Colors.black
+                      : Theme.of(context).scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(expanded ? 10 : 100),
+                ),
+                child: contentChild,
+              ),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: expanded ? hideData : showData,
+                child: _TileHeader(
+                  dateTime: widget.profileData.loggedAt,
+                  title: title,
+                  showDateTime: widget.profileData.canShowDateTime || expanded,
+                  color: expanded ? Colors.transparent : color,
+                  icon: Icon(iconData, color: expanded ? color : bgColor),
+                ),
+              ),
+            ],
+          ),
+          if (!widget.hideBottomDivider)
+            Align(
+              alignment: contentAlignment,
+              child: SizedBox(
+                width: _kAnalyticsItemHeight,
+                height: _kDividerHeight,
+                child: VerticalDivider(thickness: 2),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -359,50 +401,43 @@ class _TileHeader extends StatelessWidget {
   final bool showDateTime;
   final Color color;
   final Widget icon;
-
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: title,
-      child: Row(
-        // crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: _numerator,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                showDateTime ? _formatLoggedAt(dateTime) : '',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
-                ),
+    return Row(
+      // crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: _numerator,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              showDateTime ? _formatLoggedAt(dateTime) : '',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
               ),
             ),
           ),
-          AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(100),
-            ),
-            child: SizedBox.square(
-              dimension: _kAnalyticsItemHeight,
-              child: icon,
-            ),
+        ),
+        AnimatedContainer(
+          duration: Duration(milliseconds: 300),
+          margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(100),
           ),
-          Expanded(
-            flex: _denominator,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
+          child: SizedBox.square(dimension: _kAnalyticsItemHeight, child: icon),
+        ),
+        Expanded(
+          flex: _denominator,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

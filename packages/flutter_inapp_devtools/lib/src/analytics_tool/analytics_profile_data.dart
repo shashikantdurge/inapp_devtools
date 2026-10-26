@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 sealed class AnalyticsProfileData {
   const AnalyticsProfileData({
     required this.loggedAt,
@@ -39,6 +41,8 @@ sealed class AnalyticsProfileData {
     Object? value,
     bool canShowDateTime,
   }) = UserProperty;
+
+  String beautifyContentForCopy();
 }
 
 final class Event extends AnalyticsProfileData {
@@ -51,6 +55,20 @@ final class Event extends AnalyticsProfileData {
 
   final String name;
   final Map<String, Object?>? parameters;
+
+  @override
+  String beautifyContentForCopy() {
+    String? parametersString;
+    if (parameters != null) {
+      try {
+        parametersString = JsonEncoder.withIndent('\t').convert(parameters);
+      } catch (_) {
+        parametersString = parameters?.toString();
+      }
+      parametersString = '\n$parametersString';
+    }
+    return '${loggedAt.toIso8601String()}\nevent - $name${parametersString ?? ''}';
+  }
 }
 
 final class ScreenView extends AnalyticsProfileData {
@@ -63,6 +81,20 @@ final class ScreenView extends AnalyticsProfileData {
 
   final String screenName;
   final Map<String, Object?>? parameters;
+
+  @override
+  String beautifyContentForCopy() {
+    String? parametersString;
+    if (parameters != null) {
+      try {
+        parametersString = JsonEncoder.withIndent('\t').convert(parameters);
+      } catch (_) {
+        parametersString = parameters?.toString();
+      }
+      parametersString = '\n$parametersString';
+    }
+    return '${loggedAt.toIso8601String()}\nscreen_view - $screenName${parametersString ?? ''}';
+  }
 }
 
 final class GlobalParameters extends AnalyticsProfileData {
@@ -73,6 +105,17 @@ final class GlobalParameters extends AnalyticsProfileData {
   });
 
   final Map<String, Object?> parameters;
+
+  @override
+  String beautifyContentForCopy() {
+    String parametersString;
+    try {
+      parametersString = JsonEncoder.withIndent('\t').convert(parameters);
+    } catch (_) {
+      parametersString = parameters.toString();
+    }
+    return '${loggedAt.toIso8601String()}\nglobal_parameters\n$parametersString';
+  }
 }
 
 final class UserId extends AnalyticsProfileData {
@@ -83,6 +126,11 @@ final class UserId extends AnalyticsProfileData {
   });
 
   final String? userId;
+
+  @override
+  String beautifyContentForCopy() {
+    return '${loggedAt.toIso8601String()}\nuser_id - $userId';
+  }
 }
 
 final class UserProperty extends AnalyticsProfileData {
@@ -95,4 +143,9 @@ final class UserProperty extends AnalyticsProfileData {
 
   final String name;
   final Object? value;
+
+  @override
+  String beautifyContentForCopy() {
+    return '${loggedAt.toIso8601String()}\nuser_property - $name: $value';
+  }
 }

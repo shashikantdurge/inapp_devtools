@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import '../common_widgets/common_widgets.dart';
 import '../common_widgets/subordinate_scroll_controller.dart';
 import '../inapp_devtool/inapp_devtools.dart';
@@ -778,7 +777,7 @@ class _TabViewOverviewState extends State<_TabViewOverview>
     }
 
     final content = lines.join('\n');
-    Clipboard.setData(ClipboardData(text: content));
+    InAppDevTools.of(context).copyDataCallback(content);
   }
 
   @override
@@ -809,49 +808,46 @@ class _TabViewOverviewState extends State<_TabViewOverview>
           sliver: SliverList.list(
             children: [
               _KeyValueRowWidget(
-                keyWidget: Text('Method'),
-                valueWidget: Text(widget.profileData.method.toUpperCase()),
+                keyName: 'Method',
+                value: widget.profileData.method.toUpperCase(),
               ),
               _KeyValueRowWidget(
-                keyWidget: Text('Request URL'),
-                valueWidget: Text(widget.profileData.uri.toString()),
+                keyName: 'Request URL',
+                value: widget.profileData.uri.toString(),
               ),
               _KeyValueRowWidget(
-                keyWidget: Text('Status'),
-                valueWidget: Text(widget.profileData.statusCodeWithValue),
+                keyName: 'Status',
+                value: widget.profileData.statusCodeWithValue,
               ),
               if (widget.profileData.response.headers case {
                 'content-type': [var contentType],
               })
-                _KeyValueRowWidget(
-                  keyWidget: Text('Content Type'),
-                  valueWidget: Text(contentType),
-                ),
+                _KeyValueRowWidget(keyName: 'Content Type', value: contentType),
 
               Divider(),
               if (responseTime != null)
                 _KeyValueRowWidget(
-                  keyWidget: Text('Response Time'),
-                  valueWidget: Text('${responseTime.inMilliseconds} ms'),
+                  keyName: 'Response Time',
+                  value: '${responseTime.inMilliseconds} ms',
                 ),
               if (startTime != null)
                 _KeyValueRowWidget(
-                  keyWidget: Text('Start Time'),
-                  valueWidget: Text(formatLocalTime(startTime)),
+                  keyName: 'Start Time',
+                  value: formatLocalTime(startTime),
                 ),
               if (endTime != null)
                 _KeyValueRowWidget(
-                  keyWidget: Text('End Time'),
-                  valueWidget: Text(formatLocalTime(endTime)),
+                  keyName: 'End Time',
+                  value: formatLocalTime(endTime),
                 ),
               Divider(),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(text: widget.profileData.toCurl()),
-                    );
+                    InAppDevTools.of(
+                      context,
+                    ).copyDataCallback(widget.profileData.toCurl());
                   },
                   icon: Icon(Icons.copy),
                   label: Text('cURL Command'),
@@ -872,8 +868,31 @@ class _TabViewHeaders extends StatefulWidget {
   final String tabName;
   final NetworkProfileData profileData;
 
+  @override
+  State<_TabViewHeaders> createState() => _TabViewHeadersState();
+}
+
+class _TabViewHeadersState extends State<_TabViewHeaders>
+    with _TabStateChangeListener, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  String get tabName => widget.tabName;
+
+  late ToolStateNotifier toolStateNotifier;
+  bool generalTabExpanded = true;
+  bool responseHeadersTabExpanded = true;
+  bool requestHeadersTabExpanded = true;
+
+  @override
+  void onTabActive() {
+    _NetworkDetailWidgetScope.of(context).networkActionsNotifier
+        .setCopyContentCallback(copyHeadersContent, tabName);
+  }
+
   void copyHeadersContent() {
-    final d = profileData;
+    final d = widget.profileData;
     final buffer = StringBuffer()
       ..writeln('${d.method.toUpperCase()} ${d.uri}')
       ..writeln('Status Code: ${d.statusCodeWithValue}');
@@ -895,31 +914,8 @@ class _TabViewHeaders extends StatefulWidget {
     }
 
     final content = buffer.toString().trimRight();
-    Clipboard.setData(ClipboardData(text: content));
+    InAppDevTools.of(context).copyDataCallback(content);
   }
-
-  @override
-  State<_TabViewHeaders> createState() => _TabViewHeadersState();
-}
-
-class _TabViewHeadersState extends State<_TabViewHeaders>
-    with _TabStateChangeListener, AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  String get tabName => widget.tabName;
-
-  @override
-  void onTabActive() {
-    _NetworkDetailWidgetScope.of(context).networkActionsNotifier
-        .setCopyContentCallback(widget.copyHeadersContent, tabName);
-  }
-
-  late ToolStateNotifier toolStateNotifier;
-  bool generalTabExpanded = true;
-  bool responseHeadersTabExpanded = true;
-  bool requestHeadersTabExpanded = true;
 
   @override
   void didChangeDependencies() {
@@ -961,16 +957,16 @@ class _TabViewHeadersState extends State<_TabViewHeaders>
               },
               children: [
                 _KeyValueRowWidget(
-                  keyWidget: Text('Method'),
-                  valueWidget: Text(widget.profileData.method.toUpperCase()),
+                  keyName: 'Method',
+                  value: widget.profileData.method.toUpperCase(),
                 ),
                 _KeyValueRowWidget(
-                  keyWidget: Text('Request URL'),
-                  valueWidget: Text(widget.profileData.uri.toString()),
+                  keyName: 'Request URL',
+                  value: widget.profileData.uri.toString(),
                 ),
                 _KeyValueRowWidget(
-                  keyWidget: Text('Status Code'),
-                  valueWidget: Text(widget.profileData.statusCodeWithValue),
+                  keyName: 'Status Code',
+                  value: widget.profileData.statusCodeWithValue,
                 ),
               ],
             ),
@@ -989,8 +985,8 @@ class _TabViewHeadersState extends State<_TabViewHeaders>
                 children: [
                   for (final header in headers.entries)
                     _KeyValueRowWidget(
-                      keyWidget: Text(header.key),
-                      valueWidget: Text(header.value.join(', ')),
+                      keyName: header.key,
+                      value: header.value.join(', '),
                     ),
                 ],
               ),
@@ -1009,8 +1005,8 @@ class _TabViewHeadersState extends State<_TabViewHeaders>
                 children: [
                   for (final header in headers.entries)
                     _KeyValueRowWidget(
-                      keyWidget: Text(header.key),
-                      valueWidget: Text(header.value.join(', ')),
+                      keyName: header.key,
+                      value: header.value.join(', '),
                     ),
                 ],
               ),
@@ -1073,12 +1069,20 @@ class __DataPreviewTabViewState extends State<_DataPreviewTabView>
 
   @override
   void onTabActive() {
+    final copyContenCallback = _supportedDataPreviewExtension
+        ?.copyContentCallback
+        .call(_previewExtensionData);
     _NetworkDetailWidgetScope.of(
       context,
     ).networkActionsNotifier.setCopyContentCallback(
-      _supportedDataPreviewExtension?.copyContentCallback.call(
-        _previewExtensionData,
-      ),
+      copyContenCallback != null
+          ? () {
+              final content = copyContenCallback();
+              if (content != null) {
+                InAppDevTools.of(context).copyDataCallback(content);
+              }
+            }
+          : null,
       tabName,
     );
   }
@@ -1165,12 +1169,9 @@ class _NetworkActionsNotifier extends ChangeNotifier {
 //################################## Key Value Row Widget ###################################
 
 class _KeyValueRowWidget extends StatelessWidget {
-  const _KeyValueRowWidget({
-    required this.keyWidget,
-    required this.valueWidget,
-  });
-  final Widget keyWidget;
-  final Widget valueWidget;
+  const _KeyValueRowWidget({required this.keyName, required this.value});
+  final String keyName;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
@@ -1181,16 +1182,19 @@ class _KeyValueRowWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: DefaultTextStyle(
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-              child: keyWidget,
+            child: Text(
+              keyName,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ),
           Expanded(
             flex: 2,
-            child: DefaultTextStyle(
-              style: TextStyle(fontSize: 12),
-              child: valueWidget,
+            child: Tooltip(
+              message: value,
+              onTriggered: () {
+                InAppDevTools.of(context).copyDataCallback(value);
+              },
+              child: Text(value, style: TextStyle(fontSize: 12)),
             ),
           ),
         ],

@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+typedef CopyContentCallback<T> = Object? Function();
+
 @immutable
 abstract class DataPreviewExtension<T> {
   T? mayInitialize(DataContext dataContext);
   Widget buildPreview(BuildContext context, T data);
-  VoidCallback? copyContentCallback(T data) => null;
+  CopyContentCallback<T>? copyContentCallback(T data) => null;
 }
 
 class DataContext {
@@ -64,11 +66,13 @@ class DefaultDataPreviewExtension
   }
 
   @override
-  VoidCallback? copyContentCallback(DefaultPreviewExtensionData data) {
+  CopyContentCallback<DefaultPreviewExtensionData>? copyContentCallback(
+    DefaultPreviewExtensionData data,
+  ) {
     switch (data) {
       case DefaultTextPreviewExtensionData():
         return () {
-          Clipboard.setData(ClipboardData(text: data.text));
+          return data.text;
         };
       case DefaultImagePreviewExtensionData():
         return null;
