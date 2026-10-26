@@ -1,9 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
-import 'package:flutter_pretty_json/flutter_pretty_json.dart';
+import 'package:flutter_pretty_json/flutter_pretty_json.dart' as pj;
 
 class IadJsonDataPreview extends DataPreviewExtension<String> {
   /// The depth to expand the tree. Defaults to null.
@@ -34,10 +33,13 @@ class IadJsonDataPreview extends DataPreviewExtension<String> {
           handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
         ),
         SliverFillRemaining(
-          child: PrettyJson(
+          child: pj.PrettyJson(
             encodedJson: data,
             expandDepth: expandDepth,
             expanded: expanded,
+            copyContentCallback: (data) {
+              InAppDevTools.of(context).copyDataCallback(data);
+            },
             verticalDetails: ScrollableDetails.vertical(
               controller: PrimaryScrollController.maybeOf(context),
             ),
@@ -48,10 +50,9 @@ class IadJsonDataPreview extends DataPreviewExtension<String> {
   }
 
   @override
-  VoidCallback? copyContentCallback(String data) {
+  CopyContentCallback<String>? copyContentCallback(String data) {
     return () {
-      final content = JsonEncoder.withIndent('\t').convert(jsonDecode(data));
-      Clipboard.setData(ClipboardData(text: content));
+      return JsonEncoder.withIndent('\t').convert(jsonDecode(data));
     };
   }
 }

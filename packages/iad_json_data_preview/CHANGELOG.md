@@ -1,3 +1,7 @@
+## 0.2.0
+* Update flutter_inapp_devtools dependency to 0.2.0
+* Update flutter_pretty_json dependency to 0.2.0
+
 ## 0.1.1
 * Update flutter_inapp_devtools dependency to 0.1.2
 
