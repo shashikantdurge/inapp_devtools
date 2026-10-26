@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inapp_devtools/flutter_inapp_devtools.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -29,9 +28,9 @@ class IadHtmlDataPreview extends DataPreviewExtension<String> {
   }
 
   @override
-  VoidCallback? copyContentCallback(String data) {
+  CopyContentCallback? copyContentCallback(String data) {
     return () {
-      Clipboard.setData(ClipboardData(text: data));
+      return data;
     };
   }
 }
